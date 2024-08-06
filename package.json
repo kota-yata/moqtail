@@ -1,0 +1,25 @@
+{
+  "name": "kota-moqt",
+  "version": "1.0.0",
+  "description": "Media over QUIC Transport Implementation",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/kota-yata/kota-moqt.git"
+  },
+  "keywords": [
+    "moqt"
+  ],
+  "author": "Kota Yatagai",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kota-yata/kota-moqt/issues"
+  },
+  "homepage": "https://github.com/kota-yata/kota-moqt#readme",
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}
