@@ -5,7 +5,8 @@
   "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc"
+    "build": "tsc",
+    "format": "prettier --write ."
   },
   "repository": {
     "type": "git",
@@ -22,5 +23,8 @@
   "homepage": "https://github.com/kota-yata/moqtail#readme",
   "dependencies": {
     "typescript": "^5.6.2"
+  },
+  "devDependencies": {
+    "prettier": "3.3.3"
   }
 }
