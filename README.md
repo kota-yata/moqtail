@@ -1,2 +1,7 @@
 ## moqtail
-draft-04 implementation
+Media over QUIC Transport implementation for browsers. Currently kept up with Draft-04.
+
+## Usage
+```
+npm i moqtail
+```
