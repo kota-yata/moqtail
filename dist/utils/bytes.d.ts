@@ -1,0 +1,11 @@
+export declare const buffReadFrombyobReader: (reader: any, buffer: any, offset: any, size: any) => Promise<any>;
+export declare const numberToVarInt: (v: any) => Uint8Array;
+export declare const varIntToNumber: (readableStream: any) => Promise<any>;
+export declare const concatBuffer: (arr: any) => Uint8Array;
+export declare const buffRead: (readableStream: any, size: any) => Promise<any>;
+export declare const readUntilEof: (readableStream: any, blockSize: any) => Promise<Uint8Array>;
+export declare const serializeMetadata: (metadata: any) => Uint8Array;
+export declare const isMetadataValid: (metadata: any) => boolean;
+export declare const deSerializeMetadata: (metadata: any) => any;
+export declare const stringToBytes: (str: string) => Uint8Array;
+export declare const toString: (receiveStream: ReadableStream) => Promise<string>;
