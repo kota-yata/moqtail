@@ -2,6 +2,7 @@ import { MOQ_DRAFT04_VERSION, MOQ_MAX_PARAMS, MOQ_MESSAGE, MOQ_PARAMETER_AUTHORI
 export * from './constants';
 import { TrackManager } from './track';
 import { numberToVarInt, concatBuffer, varIntToNumber, buffRead, stringToBytes, toString } from './utils/bytes';
+export * as moqtBytes from './utils/bytes';
 
 interface SenderState {
   [key: string]: {
