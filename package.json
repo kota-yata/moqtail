@@ -1,6 +1,6 @@
 {
   "name": "moqtail",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Media over QUIC Transport Browser Implementation",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
