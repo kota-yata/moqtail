@@ -1,5 +1,6 @@
 export * from './constants';
 import { TrackManager } from './track';
+export * as moqtBytes from './utils/bytes';
 export declare class MOQT {
     private MAX_INFLIGHT_REQUESTS;
     private wt;
