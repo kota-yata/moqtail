@@ -24,5 +24,5 @@ const messageType = moqt.readControlMessageType();
 if (type !== MOQ_MESSAGE.SERVER_SETUP) {
   throw new Error(`SETUP answer with type ${type} is not supported`);
 }
-const setupMessage = await moqt.readSetup()
+const setupMessage = await moqt.readServerSetup()
 ```
