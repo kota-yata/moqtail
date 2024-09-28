@@ -5,6 +5,8 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 */
 
+import { MOQ_MAX_PARAMS, MOQ_PARAMETER_AUTHORIZATION_INFO, MOQ_PARAMETER_ROLE } from "../constants";
+
 const MAX_U6 = Math.pow(2, 6) - 1;
 const MAX_U14 = Math.pow(2, 14) - 1;
 const MAX_U30 = Math.pow(2, 30) - 1;
@@ -229,4 +231,27 @@ export const toString = async (receiveStream: ReadableStream) => {
   const size = await varIntToNumber(receiveStream);
   const buffer = await buffRead(receiveStream, size);
   return new TextDecoder().decode(buffer);
+}
+
+export const readParams = async (controlReader: ReadableStream) => {
+  const ret = { authInfo: '', role: -1 };
+  const numParams = await varIntToNumber(controlReader);
+  if (numParams > MOQ_MAX_PARAMS) {
+    throw new Error(`exceeded the max number of supported params ${MOQ_MAX_PARAMS}, got ${numParams}`);
+  }
+  for (let i = 0; i < numParams; i++) {
+    const paramId = await varIntToNumber(controlReader);
+    if (paramId === MOQ_PARAMETER_AUTHORIZATION_INFO) {
+      ret.authInfo = await toString(controlReader);
+      break;
+    } else if (paramId === MOQ_PARAMETER_ROLE) {
+      await varIntToNumber(controlReader);
+      ret.role = await varIntToNumber(controlReader);
+    } else {
+      const paramLength = await varIntToNumber(controlReader);
+      const skip = await buffRead(controlReader, paramLength);
+      ret[`unknown-${i}-${paramId}-${paramLength}`] = JSON.stringify(skip);
+    }
+  }
+  return ret;
 }

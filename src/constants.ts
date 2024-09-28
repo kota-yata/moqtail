@@ -89,3 +89,11 @@ export const OBJECT_STATUS = {
   END_OF_GROUP: 0x3,
   END_OF_TRACK_AND_GROUP: 0x4,
 };
+
+export const TRACK_STATUS_CODE = {
+  IN_PROGRESS: 0x0,
+  NOT_EXIST: 0x1,
+  NOT_BEGUN: 0x2,
+  FINISHED: 0x3,
+  SENDER_IS_RELAY: 0x4
+}
