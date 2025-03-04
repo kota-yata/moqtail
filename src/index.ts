@@ -2,7 +2,7 @@
 // OBJECT_DATAGRAM
 // STREAM_HEADER_TRACK
 // STREAM_HEADER_GROUP
-import { MOQ_DRAFT04_VERSION, MOQ_MAX_PARAMS, MOQ_MESSAGE, MOQ_PARAMETER_AUTHORIZATION_INFO, MOQ_PARAMETER_ROLE, OBJECT_STATUS, SUBSCRIBE_FILTER, TRACK_STATUS_CODE } from './constants';
+import { MOQ_DRAFT04_VERSION, MOQ_MAX_PARAMS, CONTROL_MESSAGE, MOQ_PARAMETER_AUTHORIZATION_INFO, MOQ_PARAMETER_ROLE, OBJECT_STATUS, SUBSCRIBE_FILTER, TRACK_STATUS_CODE } from './constants';
 export * from './constants';
 import { TrackManager } from './track';
 import { numberToVarInt, concatBuffer, varIntToNumber, buffRead, stringToBytes, toString } from './utils/bytes';
@@ -47,7 +47,7 @@ export class MOQT {
   }
   // SETUP
   private generateSetupMessage(props: { role: number }) {
-    const messageType = numberToVarInt(MOQ_MESSAGE.CLIENT_SETUP);
+    const messageType = numberToVarInt(CONTROL_MESSAGE.CLIENT_SETUP);
     const versionLength = numberToVarInt(1);
     const version = numberToVarInt(MOQ_DRAFT04_VERSION);
     const numberOfParams = numberToVarInt(1);
@@ -67,7 +67,7 @@ export class MOQT {
   }
   // ANNOUNCE
   private generateAnnounceMessage(props: { namespace: string, authInfo: string }) {
-    const messageType = numberToVarInt(MOQ_MESSAGE.ANNOUNCE);
+    const messageType = numberToVarInt(CONTROL_MESSAGE.ANNOUNCE);
     const namespace = stringToBytes(props.namespace);
     const numberOfParams = numberToVarInt(1);
     const authInfoIdBytes = numberToVarInt(MOQ_PARAMETER_AUTHORIZATION_INFO);
@@ -97,7 +97,7 @@ export class MOQT {
     return { namespace };
   }
   public generateUnannounceMessage(ns: string) {
-    const messageType = numberToVarInt(MOQ_MESSAGE.UNANNOUNCE);
+    const messageType = numberToVarInt(CONTROL_MESSAGE.UNANNOUNCE);
     const namespace = stringToBytes(ns);
     return concatBuffer([messageType, namespace]);
   }
@@ -111,7 +111,7 @@ export class MOQT {
   }
   // SUBSCRIBE
   private generateSubscribeMessage(props: {subscribeId: number, namespace: string, trackName: string, authInfo: string}) {
-    const messageTypeBytes = numberToVarInt(MOQ_MESSAGE.SUBSCRIBE);
+    const messageTypeBytes = numberToVarInt(CONTROL_MESSAGE.SUBSCRIBE);
     const subscribeIdBytes = numberToVarInt(props.subscribeId);
     const trackAliasBytes = numberToVarInt(props.subscribeId); // temporary value
     const namespaceBytes = stringToBytes(props.namespace);
@@ -152,7 +152,7 @@ export class MOQT {
     return ret;
   }
   private generateSubscribeOkMessage(props: {subscribeId: number, expiresMs: number }) {
-    const messageTypeBytes = numberToVarInt(MOQ_MESSAGE.SUBSCRIBE_OK);
+    const messageTypeBytes = numberToVarInt(CONTROL_MESSAGE.SUBSCRIBE_OK);
     const subscriptionIdBytes = numberToVarInt(props.subscribeId);
     const expiresBytes = numberToVarInt(props.expiresMs);
     const contentExistsBytes = numberToVarInt(1); // temporary constant
@@ -191,7 +191,7 @@ export class MOQT {
     return { subscribeId, statusCode, reasonPhrase, contentExists, finalGroupId, finalObjectId };
   }
   private generateUnsubscribeMessage(subscribeId: number) {
-    const messageTypeBytes = numberToVarInt(MOQ_MESSAGE.UNSUBSCRIBE);
+    const messageTypeBytes = numberToVarInt(CONTROL_MESSAGE.UNSUBSCRIBE);
     const subscribeIdBytes = numberToVarInt(subscribeId);
     return concatBuffer([messageTypeBytes, subscribeIdBytes]);
   }
@@ -205,7 +205,7 @@ export class MOQT {
   }
   // TRACK_STATUS
   private generateTrackStatusRequestMessage(props: { namespace: string, trackName: string }) {
-    const messageTypeBytes = numberToVarInt(MOQ_MESSAGE.TRACK_STATUS_REQUEST);
+    const messageTypeBytes = numberToVarInt(CONTROL_MESSAGE.TRACK_STATUS_REQUEST);
     const namespaceBytes = stringToBytes(props.namespace);
     const trackNameBytes = stringToBytes(props.trackName);
     return concatBuffer([messageTypeBytes, namespaceBytes, trackNameBytes]);
@@ -220,7 +220,7 @@ export class MOQT {
     return { namespace, trackName };
   }
   private generateTrackStatusMessage(props: { namespace: string, trackName: string, status: number, lastGroupId: number, lastObjectId: number }) {
-    const messageTypeBytes = numberToVarInt(MOQ_MESSAGE.TRACK_STATUS);
+    const messageTypeBytes = numberToVarInt(CONTROL_MESSAGE.TRACK_STATUS);
     const namespaceBytes = stringToBytes(props.namespace);
     const trackNameBytes = stringToBytes(props.trackName);
     const statusBytes = numberToVarInt(props.status);
@@ -248,7 +248,7 @@ export class MOQT {
   }
   // OBJECT
   private generateObjectStreamMessage(props: {subscribeId: number, groupSeq: number, objectSeq: number, sendOrder: number, data: Uint8Array}) {
-    const messageTypeBytes = numberToVarInt(MOQ_MESSAGE.OBJECT_STREAM);
+    const messageTypeBytes = numberToVarInt(CONTROL_MESSAGE.OBJECT_STREAM);
     const subscribeIdBytes = numberToVarInt(props.subscribeId);
     const trackAliasBytes = numberToVarInt(props.subscribeId); // temporary value
     const groupIdBytes = numberToVarInt(props.groupSeq);
