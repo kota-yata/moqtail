@@ -8,11 +8,17 @@ export const serializeClientSetup = (props: { supportedVersions: number[], param
   const version = props.supportedVersions.map(version => numberToVarInt(version));
   const concatenatedVersions = concatBuffer(version);
   const params = serializeParams(props.params);
-  return concatBuffer([messageType, versionLength, concatenatedVersions, params]);
+  const length = numberToVarInt(concatBuffer([versionLength, concatenatedVersions, params]).length);
+  return concatBuffer([messageType, length, versionLength, concatenatedVersions, params]);
 }
 
-export const readClientSetup = async (controlReader: ReadableStream) => {
-  const version = await varIntToNumber(controlReader);
+export const deserializeClientSetup = async (controlReader: ReadableStream) => {
+  await varIntToNumber(controlReader); // length
+  const versionLength = await varIntToNumber(controlReader);
+  let versions: number[] = [];
+  for (let i = 0; i < versionLength; i++) {
+    versions.push(await varIntToNumber(controlReader));
+  }
   const parameters = await deserializeParams(CONTROL_MESSAGE.CLIENT_SETUP, controlReader);
-  return { version, parameters };
+  return { versions, parameters };
 }
