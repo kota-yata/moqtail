@@ -221,37 +221,14 @@ const base64ToArrayBuffer = (base64) => {
   return bytes.buffer;
 };
 
-export const stringToBytes = (str: string) => {
+export const stringToVarBytes = (str: string) => {
   const dataStrBytes = new TextEncoder().encode(str);
   const dataStrLengthBytes = numberToVarInt(dataStrBytes.byteLength);
   return concatBuffer([dataStrLengthBytes, dataStrBytes]);
 };
 
-export const toString = async (receiveStream: ReadableStream) => {
+export const varBytesToString = async (receiveStream: ReadableStream) => {
   const size = await varIntToNumber(receiveStream);
   const buffer = await buffRead(receiveStream, size);
   return new TextDecoder().decode(buffer);
-}
-
-export const readParams = async (controlReader: ReadableStream) => {
-  const ret = { authInfo: '', role: -1 };
-  const numParams = await varIntToNumber(controlReader);
-  if (numParams > MOQ_MAX_PARAMS) {
-    throw new Error(`exceeded the max number of supported params ${MOQ_MAX_PARAMS}, got ${numParams}`);
-  }
-  for (let i = 0; i < numParams; i++) {
-    const paramId = await varIntToNumber(controlReader);
-    if (paramId === MOQ_PARAMETER_AUTHORIZATION_INFO) {
-      ret.authInfo = await toString(controlReader);
-      break;
-    } else if (paramId === MOQ_PARAMETER_ROLE) {
-      await varIntToNumber(controlReader);
-      ret.role = await varIntToNumber(controlReader);
-    } else {
-      const paramLength = await varIntToNumber(controlReader);
-      const skip = await buffRead(controlReader, paramLength);
-      ret[`unknown-${i}-${paramId}-${paramLength}`] = JSON.stringify(skip);
-    }
-  }
-  return ret;
 }

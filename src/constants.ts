@@ -11,7 +11,7 @@ export const PARAMETER = {
   }
 }
 
-export const MOQ_MAX_PARAMS = 256;
+// export const MOQ_MAX_PARAMS = 256;
 export const MOQ_MAX_ARRAY_LENGTH = 1024;
 
 export const CONTROL_MESSAGE = {
