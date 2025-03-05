@@ -1,3 +1,4 @@
+export * from './constants';
 export { serializeClientSetup, deserializeClientSetup } from './messages/clientSetup';
 export { serializeFetch, deserializeFetch } from './messages/fetch';
 export { serializeFetchCancel, deserializeFetchCancel } from './messages/fetchCancel';

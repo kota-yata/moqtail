@@ -1,3 +1,4 @@
+export declare const MOQT_DRAFT09_VERSION = 4278190089;
 export declare const MOQT_DRAFT10_VERSION = 4278190090;
 export declare const MOQT_SUPPORTED_VERSIONS: number[];
 export declare const PARAMETER: {
@@ -19,7 +20,6 @@ export declare const PARAMETER: {
         };
     };
 };
-export declare const MOQ_MAX_ARRAY_LENGTH = 1024;
 type ObjectValueList<T extends Record<any, any>> = T[keyof T];
 export declare const CONTROL_MESSAGE: {
     readonly CLIENT_SETUP: 64;

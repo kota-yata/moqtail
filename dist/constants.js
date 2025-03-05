@@ -1,5 +1,6 @@
+export const MOQT_DRAFT09_VERSION = 0xff000009;
 export const MOQT_DRAFT10_VERSION = 0xff00000A;
-export const MOQT_SUPPORTED_VERSIONS = [MOQT_DRAFT10_VERSION];
+export const MOQT_SUPPORTED_VERSIONS = [MOQT_DRAFT09_VERSION, MOQT_DRAFT10_VERSION];
 export const PARAMETER = {
     AUTHORIZATION_INFO: { KEY: 0x02 },
     DELIVERY_TIMOUT: { KEY: 0x03 },
@@ -9,8 +10,6 @@ export const PARAMETER = {
         MAX_SUBSCRIBE_ID: { KEY: 0x2 },
     }
 };
-// export const MOQ_MAX_PARAMS = 256;
-export const MOQ_MAX_ARRAY_LENGTH = 1024;
 export const CONTROL_MESSAGE = {
     CLIENT_SETUP: 0x40,
     SERVER_SETUP: 0x41,
