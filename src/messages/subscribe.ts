@@ -1,8 +1,8 @@
-import { CONTROL_MESSAGE, SUBSCRIBE_FILTER } from "../constants";
-import { deserializeParams, Parameter, serializeParams } from "../parameter";
+import { CONTROL_MESSAGE, GROUP_ORDER, SUBSCRIBE_FILTER } from "../constants";
+import { deserializeParams, Parameter, serializeParams } from "../utils/parameter";
 import { concatBuffer, numberToVarInt, stringToVarBytes, varIntToNumber, varBytesToString, setUint8, getUint8 } from "../utils/bytes";
 
-export const serializeSubscribe = (props: { subscribeId: number, trackAlias: number, namespace: string[], trackName: string, subscriberPriority: number, groupOrder: number, filterType: SUBSCRIBE_FILTER, startGroup?: number, startObject?: number, endGroup?: number, parameters?: Parameter[] }) => {
+export const serializeSubscribe = (props: { subscribeId: number, trackAlias: number, namespace: string[], trackName: string, subscriberPriority: number, groupOrder: GROUP_ORDER, filterType: SUBSCRIBE_FILTER, startGroup?: number, startObject?: number, endGroup?: number, parameters?: Parameter[] }) => {
   const messageType = numberToVarInt(CONTROL_MESSAGE.SUBSCRIBE);
   const subscribeIdBytes = numberToVarInt(props.subscribeId);
   const trackAliasBytes = numberToVarInt(props.trackAlias);
@@ -29,7 +29,10 @@ export const deserializeSubscribe = async (controlReader: ReadableStream) => {
   const namespace = await Promise.all(Array.from({ length: namespaceLength }, () => varBytesToString(controlReader)));
   const trackName = await varBytesToString(controlReader);
   const subscriberPriority = await getUint8(controlReader);
-  const groupOrder = await getUint8(controlReader);
+  const groupOrder = await getUint8(controlReader) as GROUP_ORDER;
+  if (!Object.values(GROUP_ORDER).includes(groupOrder)) {
+    throw new Error(`Invalid Group Order: ${groupOrder}`);
+  }
   const filterType = await varIntToNumber(controlReader) as SUBSCRIBE_FILTER;
   if (!Object.values(SUBSCRIBE_FILTER).includes(filterType)) {
     throw new Error(`Invalid Subscribe Filter Type: ${filterType}`);

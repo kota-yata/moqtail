@@ -1,6 +1,6 @@
 import { numberToVarInt, stringToVarBytes, concatBuffer, varIntToNumber, varBytesToString } from '../utils/bytes';
 import { CONTROL_MESSAGE } from '../constants';
-import { serializeParams, deserializeParams, Parameter } from '../parameter';
+import { serializeParams, deserializeParams, Parameter } from '../utils/parameter';
 
 export const serializeSubscribeAnnounces = (props: { trackNamespacePrefix: string[], parameters?: Parameter[] }) => {
   const messageTypeBytes = numberToVarInt(CONTROL_MESSAGE.SUBSCRIBE_ANNOUNCES);

@@ -126,6 +126,7 @@ export const GROUP_ORDER = {
   ASCENDING: 0x1,
   DESCENDING: 0x2
 } as const;
+export type GROUP_ORDER = ObjectValueList<typeof GROUP_ORDER>;
 
 export const OBJECT_STATUS = {
   NORMAL: 0x0,

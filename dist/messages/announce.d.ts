@@ -1,4 +1,4 @@
-import { Parameter } from '../parameter';
+import { Parameter } from '../utils/parameter';
 export declare const serializeAnnounce: (props: {
     trackNamespace: string[];
     parameters?: Parameter[];

@@ -1,5 +1,5 @@
-import { CONTROL_MESSAGE, SUBSCRIBE_FILTER } from "../constants";
-import { deserializeParams, serializeParams } from "../parameter";
+import { CONTROL_MESSAGE, GROUP_ORDER, SUBSCRIBE_FILTER } from "../constants";
+import { deserializeParams, serializeParams } from "../utils/parameter";
 import { concatBuffer, numberToVarInt, stringToVarBytes, varIntToNumber, varBytesToString, setUint8, getUint8 } from "../utils/bytes";
 export const serializeSubscribe = (props) => {
     const messageType = numberToVarInt(CONTROL_MESSAGE.SUBSCRIBE);
@@ -28,6 +28,9 @@ export const deserializeSubscribe = async (controlReader) => {
     const trackName = await varBytesToString(controlReader);
     const subscriberPriority = await getUint8(controlReader);
     const groupOrder = await getUint8(controlReader);
+    if (!Object.values(GROUP_ORDER).includes(groupOrder)) {
+        throw new Error(`Invalid Group Order: ${groupOrder}`);
+    }
     const filterType = await varIntToNumber(controlReader);
     if (!Object.values(SUBSCRIBE_FILTER).includes(filterType)) {
         throw new Error(`Invalid Subscribe Filter Type: ${filterType}`);

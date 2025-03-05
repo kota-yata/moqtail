@@ -1,5 +1,5 @@
 import { FETCH_TYPE } from '../constants';
-import { Parameter } from '../parameter';
+import { Parameter } from '../utils/parameter';
 export declare const serializeFetch: (props: {
     subscribeId: number;
     subscriberPriority: number;

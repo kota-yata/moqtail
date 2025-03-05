@@ -1,6 +1,6 @@
 import { numberToVarInt, concatBuffer, varIntToNumber, setUint8, getUint8 } from '../utils/bytes';
 import { CONTROL_MESSAGE } from '../constants';
-import { deserializeParams, serializeParams } from '../parameter';
+import { deserializeParams, serializeParams } from '../utils/parameter';
 export const serializeFetchOk = (props) => {
     const messageTypeBytes = numberToVarInt(CONTROL_MESSAGE.FETCH_OK);
     const subscribeIdBytes = numberToVarInt(props.subscribeId);

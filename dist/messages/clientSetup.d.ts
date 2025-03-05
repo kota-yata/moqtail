@@ -1,4 +1,4 @@
-import { Parameter } from "../parameter";
+import { Parameter } from "../utils/parameter";
 export declare const serializeClientSetup: (props: {
     supportedVersions: number[];
     params: Parameter[];

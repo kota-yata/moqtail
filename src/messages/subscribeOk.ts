@@ -1,6 +1,6 @@
 import { CONTENT_EXISTS, CONTROL_MESSAGE } from "../constants";
 import { concatBuffer, numberToVarInt, varIntToNumber, setUint8, getUint8 } from "../utils/bytes";
-import { deserializeParams, Parameter, serializeParams } from "../parameter";
+import { deserializeParams, Parameter, serializeParams } from "../utils/parameter";
 
 export const serializeSubscribeOk = (props: { subscribeId: number, expires: number, groupOrder: number, contentExists: CONTENT_EXISTS, largestGroupId?: number, largestObjectId?: number, parameters?: Parameter[] }) => {
   const messageType = numberToVarInt(CONTROL_MESSAGE.SUBSCRIBE_OK);

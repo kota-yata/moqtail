@@ -1,5 +1,5 @@
 import { CONTROL_MESSAGE } from "../constants";
-import { deserializeParams, serializeParams } from "../parameter";
+import { deserializeParams, serializeParams } from "../utils/parameter";
 import { concatBuffer, numberToVarInt, varIntToNumber } from "../utils/bytes";
 export const serializeClientSetup = (props) => {
     const messageType = numberToVarInt(CONTROL_MESSAGE.CLIENT_SETUP);

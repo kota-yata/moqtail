@@ -1,6 +1,6 @@
 import { numberToVarInt, concatBuffer, varIntToNumber, stringToVarBytes, varBytesToString, setUint8, getUint8 } from '../utils/bytes';
 import { CONTROL_MESSAGE, FETCH_TYPE } from '../constants';
-import { deserializeParams, Parameter, serializeParams } from '../parameter';
+import { deserializeParams, Parameter, serializeParams } from '../utils/parameter';
 
 export const serializeFetch = (props: { subscribeId: number, subscriberPriority: number, groupOrder: number, fetchType: FETCH_TYPE, trackNamespace?: string[], trackName?: string, startGroup?: number, startObject?: number, endGroup?: number, endObject?: number, joiningSubscribeId?: number, precedingGroupOffset?: number, parameters?: Parameter[] }) => {
   const messageTypeBytes = numberToVarInt(CONTROL_MESSAGE.FETCH);

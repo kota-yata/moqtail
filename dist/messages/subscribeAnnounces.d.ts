@@ -1,4 +1,4 @@
-import { Parameter } from '../parameter';
+import { Parameter } from '../utils/parameter';
 export declare const serializeSubscribeAnnounces: (props: {
     trackNamespacePrefix: string[];
     parameters?: Parameter[];

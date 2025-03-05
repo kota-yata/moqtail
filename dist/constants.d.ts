@@ -123,6 +123,7 @@ export declare const GROUP_ORDER: {
     readonly ASCENDING: 1;
     readonly DESCENDING: 2;
 };
+export type GROUP_ORDER = ObjectValueList<typeof GROUP_ORDER>;
 export declare const OBJECT_STATUS: {
     readonly NORMAL: 0;
     readonly OBJECT_DOES_NOT_EXIST: 1;

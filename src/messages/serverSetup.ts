@@ -1,5 +1,5 @@
 import { CONTROL_MESSAGE } from "../constants";
-import { deserializeParams, Parameter, serializeParams } from "../parameter";
+import { deserializeParams, Parameter, serializeParams } from "../utils/parameter";
 import { concatBuffer, numberToVarInt, varIntToNumber } from "../utils/bytes";
 
 export const serializeServerSetup = (props: { version: number, params: Parameter[] }) => {

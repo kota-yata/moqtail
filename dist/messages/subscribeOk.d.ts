@@ -1,5 +1,5 @@
 import { CONTENT_EXISTS } from "../constants";
-import { Parameter } from "../parameter";
+import { Parameter } from "../utils/parameter";
 export declare const serializeSubscribeOk: (props: {
     subscribeId: number;
     expires: number;

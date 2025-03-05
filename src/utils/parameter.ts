@@ -1,21 +1,13 @@
 // TODO: Parameter Deserialization
 
-import { CONTROL_MESSAGE, PARAMETER } from "./constants";
-import { concatBuffer, numberToVarInt, stringToVarBytes, varBytesToString, varIntToNumber } from "./utils/bytes"
+import { CONTROL_MESSAGE, PARAMETER } from "../constants";
+import { concatBuffer, numberToVarInt, stringToVarBytes, varBytesToString, varIntToNumber } from "./bytes"
 
 export interface Parameter {
   type: number,
   value: string | number
 }
 
-/**
- * Parameter Length (i),
- * Parameter {
-     Parameter Type (i),
-     Parameter Length (i),
-     Parameter Value (..),
-   }[]
- */
 export const serializeParams = (params: Parameter[]) => {
   const serialized = params.map(param => {
     const type = numberToVarInt(param.type);
