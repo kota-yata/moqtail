@@ -2,7 +2,7 @@ import { CONTROL_MESSAGE, SUBSCRIBE_FILTER } from "../constants";
 import { deserializeParams, Parameter, serializeParams } from "../parameter";
 import { concatBuffer, numberToVarInt, stringToVarBytes, varIntToNumber, varBytesToString, setUint8, getUint8 } from "../utils/bytes";
 
-export const serializeSubscribe = (props: { subscribeId: number, trackAlias: number, namespace: string[], trackName: string, subscriberPriority: number, groupOrder: number, filterType: number, startGroup?: number, startObject?: number, endGroup?: number, parameters?: Parameter[] }) => {
+export const serializeSubscribe = (props: { subscribeId: number, trackAlias: number, namespace: string[], trackName: string, subscriberPriority: number, groupOrder: number, filterType: SUBSCRIBE_FILTER, startGroup?: number, startObject?: number, endGroup?: number, parameters?: Parameter[] }) => {
   const messageType = numberToVarInt(CONTROL_MESSAGE.SUBSCRIBE);
   const subscribeIdBytes = numberToVarInt(props.subscribeId);
   const trackAliasBytes = numberToVarInt(props.trackAlias);
@@ -30,7 +30,10 @@ export const deserializeSubscribe = async (controlReader: ReadableStream) => {
   const trackName = await varBytesToString(controlReader);
   const subscriberPriority = await getUint8(controlReader);
   const groupOrder = await getUint8(controlReader);
-  const filterType = await varIntToNumber(controlReader);
+  const filterType = await varIntToNumber(controlReader) as SUBSCRIBE_FILTER;
+  if (!Object.values(SUBSCRIBE_FILTER).includes(filterType)) {
+    throw new Error(`Invalid Subscribe Filter Type: ${filterType}`);
+  }
   const startGroup = filterType === SUBSCRIBE_FILTER.ABSOLUTE_START || filterType === SUBSCRIBE_FILTER.ABSOLUTE_RANGE ? await varIntToNumber(controlReader) : undefined;
   const startObject = filterType === SUBSCRIBE_FILTER.ABSOLUTE_START || filterType === SUBSCRIBE_FILTER.ABSOLUTE_RANGE ? await varIntToNumber(controlReader) : undefined;
   const endGroup = filterType === SUBSCRIBE_FILTER.ABSOLUTE_RANGE ? await varIntToNumber(controlReader) : undefined;

@@ -143,12 +143,14 @@ export const TRACK_STATUS_CODE = {
   FINISHED: 0x3,
   SENDER_IS_RELAY: 0x4
 } as const;
+export type TRACK_STATUS_CODE = ObjectValueList<typeof TRACK_STATUS_CODE>;
 
 export const SUBSCRIBE_FILTER = {
   LATEST_OBJECT: 0x2,
   ABSOLUTE_START: 0x3,
   ABSOLUTE_RANGE: 0x4
 } as const;
+export type SUBSCRIBE_FILTER = ObjectValueList<typeof SUBSCRIBE_FILTER>;
 
 export const CONTENT_EXISTS = {
   NO: 0x0,
