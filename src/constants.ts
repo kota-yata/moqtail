@@ -14,6 +14,8 @@ export const PARAMETER = {
 // export const MOQ_MAX_PARAMS = 256;
 export const MOQ_MAX_ARRAY_LENGTH = 1024;
 
+type ObjectValueList<T extends Record<any, any>> = T[keyof T];
+
 export const CONTROL_MESSAGE = {
   CLIENT_SETUP: 0x40,
   SERVER_SETUP: 0x41,
@@ -41,7 +43,7 @@ export const CONTROL_MESSAGE = {
   SUBCSRIBE_ANNOUNCES_OK: 0x12,
   SUBSCRIBE_ANNOUNCES_ERROR: 0x13,
   UNSUBSCRIBE_ANNOUNCES: 0x14,
-};
+} as const;
 
 export const SESSION_CLOSE_ERROR_REASON = {
   NO_ERROR: 0x0,
@@ -54,7 +56,7 @@ export const SESSION_CLOSE_ERROR_REASON = {
   GOAWAY_TIMEOUT: 0x10,
   CONTROL_MESSAGE_TIMEOUT: 0x11,
   DATA_STREAM_TIMEOUT: 0x12,
-};
+} as const;
 
 export const SUBSCRIBE_ERROR_REASON = {
   INTERNAL_ERROR: 0x0,
@@ -64,7 +66,8 @@ export const SUBSCRIBE_ERROR_REASON = {
   TRACK_DOES_NOT_EXIST: 0x4,
   INVALID_RANGE: 0x5,
   RETRY_TRACK_ALIAS: 0x6,
-};
+} as const;
+export type SUBSCRIBE_ERROR_REASON = ObjectValueList<typeof SUBSCRIBE_ERROR_REASON>;
 
 export const SUBSCRIBE_DONE_REASON = {
   INTERNAL_ERROR: 0x0,
@@ -74,7 +77,8 @@ export const SUBSCRIBE_DONE_REASON = {
   GOING_AWAY: 0x4,
   EXPIRED: 0x5,
   TOO_FAR_BEHIND: 0x6,
-};
+} as const;
+export type SUBSCRIBE_DONE_REASON = ObjectValueList<typeof SUBSCRIBE_DONE_REASON>;
 
 export const FETCH_ERROR_REASON = {
   INTERNAL_ERROR: 0x0,
@@ -83,7 +87,8 @@ export const FETCH_ERROR_REASON = {
   NOT_SUPPORTED: 0x3,
   TRACK_DOES_NOT_EXIST: 0x4,
   INVALID_RANGE: 0x5,
-}
+} as const;
+export type FETCH_ERROR_REASON = ObjectValueList<typeof FETCH_ERROR_REASON>;
 
 export const ANNOUNCE_ERROR_REASON = {
   INTERNAL_ERROR: 0x0,
@@ -91,7 +96,7 @@ export const ANNOUNCE_ERROR_REASON = {
   TIMEOUT: 0x2,
   NOT_SUPPORTED: 0x3,
   UNINTERESTED: 0x4,
-}
+} as const;
 
 export const SUBSCRIBE_ANNOUNCES_ERROR_REASON = {
   INTERNAL_ERROR: 0x0,
@@ -99,27 +104,28 @@ export const SUBSCRIBE_ANNOUNCES_ERROR_REASON = {
   TIMEOUT: 0x2,
   NOT_SUPPORTED: 0x3,
   NAMESPACE_PREFIX_UNKNOWN: 0x4
-}
+} as const;
 
 export const STREAM = {
   SUBGROUP_HEADER: 0x4,
   FETCH_HEADER: 0x5
-}
+} as const;
 
 export const DATAGRAM = {
   OBJECT_DATAGRAM: 0x1,
   OBJECT_DATAGRAM_STATUS: 0x2
-}
+} as const;
 
 export const FETCH_TYPE = {
   STANDALONE: 0x1,
   JOINING: 0x2
-}
+} as const;
+export type FETCH_TYPE = ObjectValueList<typeof FETCH_TYPE>;
 
 export const GROUP_ORDER = {
   ASCENDING: 0x1,
   DESCENDING: 0x2
-};
+} as const;
 
 export const OBJECT_STATUS = {
   NORMAL: 0x0,
@@ -128,7 +134,7 @@ export const OBJECT_STATUS = {
   END_OF_GROUP: 0x3,
   END_OF_TRACK_AND_GROUP: 0x4,
   END_OF_TRACK: 0x5,
-};
+} as const;
 
 export const TRACK_STATUS_CODE = {
   IN_PROGRESS: 0x0,
@@ -136,4 +142,16 @@ export const TRACK_STATUS_CODE = {
   NOT_BEGUN: 0x2,
   FINISHED: 0x3,
   SENDER_IS_RELAY: 0x4
-}
+} as const;
+
+export const SUBSCRIBE_FILTER = {
+  LATEST_OBJECT: 0x2,
+  ABSOLUTE_START: 0x3,
+  ABSOLUTE_RANGE: 0x4
+} as const;
+
+export const CONTENT_EXISTS = {
+  NO: 0x0,
+  YES: 0x1
+} as const;
+export type CONTENT_EXISTS = ObjectValueList<typeof CONTENT_EXISTS>;

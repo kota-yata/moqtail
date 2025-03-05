@@ -8,12 +8,19 @@ export interface Parameter {
   value: string | number
 }
 
+/**
+ * Parameter Length (i),
+ * Parameter {
+     Parameter Type (i),
+     Parameter Length (i),
+     Parameter Value (..),
+   }[]
+ */
 export const serializeParams = (params: Parameter[]) => {
   const serialized = params.map(param => {
     const type = numberToVarInt(param.type);
     const value = typeof param.value === 'string' ? stringToVarBytes(param.value) : numberToVarInt(param.value);
-    const length = numberToVarInt(value.byteLength);
-    return concatBuffer([type, length, value]);
+    return concatBuffer([type, value]);
   });
   const numParams = numberToVarInt(params.length);
   return concatBuffer([numParams, ...serialized]);
@@ -34,10 +41,10 @@ export const deserializeParams = async (messageType: number, controlReader: Read
     const paramId = await varIntToNumber(controlReader);
     if (messageType === CONTROL_MESSAGE.CLIENT_SETUP || messageType === CONTROL_MESSAGE.SERVER_SETUP) {
       switch (paramId) {
-        case PARAMETER.SETUP.PATH:
+        case PARAMETER.SETUP.PATH.KEY:
           ret.setup.path = await varBytesToString(controlReader);
           break;
-        case PARAMETER.SETUP.MAX_SUBSCRIBE_ID:
+        case PARAMETER.SETUP.MAX_SUBSCRIBE_ID.KEY:
           ret.setup.maxSubscribeId = await varIntToNumber(controlReader);
           break
         default:
@@ -45,13 +52,13 @@ export const deserializeParams = async (messageType: number, controlReader: Read
       }
     } else {
       switch (paramId) {
-        case PARAMETER.AUTHORIZATION_INFO:
+        case PARAMETER.AUTHORIZATION_INFO.KEY:
           ret.authInfo = await varBytesToString(controlReader);
           break;
-        case PARAMETER.DELIVERY_TIMOUT:
+        case PARAMETER.DELIVERY_TIMOUT.KEY:
           ret.deliveryTimeout = await varIntToNumber(controlReader);
           break;
-        case PARAMETER.MAX_CACHE_DURATION:
+        case PARAMETER.MAX_CACHE_DURATION.KEY:
           ret.maxCacheDuration = await varIntToNumber(controlReader);
           break;
         default:

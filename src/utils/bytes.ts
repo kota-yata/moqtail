@@ -1,12 +1,3 @@
-/*
-Copyright (c) Meta Platforms, Inc. and affiliates.
-
-This source code is licensed under the MIT license found in the
-LICENSE file in the root directory of this source tree.
-*/
-
-import { MOQ_MAX_PARAMS, MOQ_PARAMETER_AUTHORIZATION_INFO, MOQ_PARAMETER_ROLE } from "../constants";
-
 const MAX_U6 = Math.pow(2, 6) - 1;
 const MAX_U14 = Math.pow(2, 14) - 1;
 const MAX_U30 = Math.pow(2, 30) - 1;
@@ -75,31 +66,45 @@ export const varIntToNumber = async (readableStream): Promise<number> => {
   return ret;
 };
 
-const setUint8 = (v) => {
+export const setUint8 = (v: number) => {
   const ret = new Uint8Array(1);
   ret[0] = v;
   return ret;
 };
 
-const setUint16 = (v) => {
+const setUint16 = (v: number) => {
   const ret = new Uint8Array(2);
   const view = new DataView(ret.buffer);
   view.setUint16(0, v);
   return ret;
 };
 
-const setUint32 = (v) => {
+const setUint32 = (v: number) => {
   const ret = new Uint8Array(4);
   const view = new DataView(ret.buffer);
   view.setUint32(0, v);
   return ret;
 };
 
-const setUint64 = (v) => {
+const setUint64 = (v: bigint) => {
   const ret = new Uint8Array(8);
   const view = new DataView(ret.buffer);
   view.setBigUint64(0, v);
   return ret;
+};
+
+export const getUint8 = async (readableStream: ReadableStream): Promise<number> => {
+  const reader = readableStream.getReader({ mode: 'byob' });
+  try {
+    const buffer = new ArrayBuffer(1);
+    const { value, done } = await reader.read(new Uint8Array(buffer));
+    if (done) {
+      throw new Error('short buffer');
+    }
+    return new DataView(buffer).getUint8(0);
+  } finally {
+    reader.releaseLock();
+  }
 };
 
 export const concatBuffer = (arr) => {
@@ -227,8 +232,17 @@ export const stringToVarBytes = (str: string) => {
   return concatBuffer([dataStrLengthBytes, dataStrBytes]);
 };
 
+export const stringToFixedBytes = (str: string) => {
+  return new TextEncoder().encode(str)
+}
+
 export const varBytesToString = async (receiveStream: ReadableStream) => {
   const size = await varIntToNumber(receiveStream);
+  const buffer = await buffRead(receiveStream, size);
+  return new TextDecoder().decode(buffer);
+}
+
+export const fixedBytesToString = async (receiveStream: ReadableStream, size: number) => {
   const buffer = await buffRead(receiveStream, size);
   return new TextDecoder().decode(buffer);
 }

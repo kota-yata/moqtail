@@ -8,7 +8,7 @@ export const serializeClientSetup = (props: { supportedVersions: number[], param
   const version = props.supportedVersions.map(version => numberToVarInt(version));
   const concatenatedVersions = concatBuffer(version);
   const params = serializeParams(props.params);
-  const length = numberToVarInt(concatBuffer([versionLength, concatenatedVersions, params]).length);
+  const length = numberToVarInt(concatBuffer([versionLength, concatenatedVersions, params]).byteLength);
   return concatBuffer([messageType, length, versionLength, concatenatedVersions, params]);
 }
 
