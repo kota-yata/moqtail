@@ -45,18 +45,18 @@ export const varIntToNumber = async (readableStream): Promise<number> => {
     let buff = new ArrayBuffer(8);
 
     buff = await buffReadFrombyobReader(reader, buff, 0, 1);
-    const size = (new DataView(buff, 0, 1).getUint8() & 0xc0) >> 6;
+    const size = (new DataView(buff, 0, 1).getUint8(0) & 0xc0) >> 6;
     if (size === 0) {
-      ret = new DataView(buff, 0, 1).getUint8() & 0x3f;
+      ret = new DataView(buff, 0, 1).getUint8(0) & 0x3f;
     } else if (size === 1) {
       buff = await buffReadFrombyobReader(reader, buff, 1, 1);
-      ret = new DataView(buff, 0, 2).getUint16() & 0x3fff;
+      ret = new DataView(buff, 0, 2).getUint16(0) & 0x3fff;
     } else if (size === 2) {
       buff = await buffReadFrombyobReader(reader, buff, 1, 3);
-      ret = new DataView(buff, 0, 4).getUint32() & 0x3fffffff;
+      ret = new DataView(buff, 0, 4).getUint32(0) & 0x3fffffff;
     } else if (size === 3) {
       buff = await buffReadFrombyobReader(reader, buff, 1, 7);
-      ret = Number(new DataView(buff, 0, 8).getBigUint64() & BigInt('0x3fffffffffffffff'));
+      ret = Number(new DataView(buff, 0, 8).getBigUint64(0) & BigInt('0x3fffffffffffffff'));
     } else {
       throw new Error('impossible');
     }
@@ -174,26 +174,6 @@ export const readUntilEof = async (readableStream, blockSize) => {
   return payload;
 };
 
-export const serializeMetadata = (metadata): Uint8Array => {
-  let ret: Uint8Array;
-  if (isMetadataValid(metadata)) {
-    const newData = {};
-    // Copy all enumerable own properties
-    newData.decoderConfig = Object.assign({}, metadata.decoderConfig);
-    // Description is buffer
-    if ('description' in metadata.decoderConfig) {
-      newData.decoderConfig.descriptionInBase64 = arrayBufferToBase64(metadata.decoderConfig.description);
-      delete newData.description;
-    }
-    // Encode
-    const encoder = new TextEncoder();
-    ret = encoder.encode(JSON.stringify(newData));
-  }
-  return ret;
-};
-
-export const isMetadataValid = (metadata) => metadata !== undefined && 'decoderConfig' in metadata;
-
 function arrayBufferToBase64(buffer) {
   let binary = '';
   const bytes = new Uint8Array(buffer);
@@ -203,18 +183,6 @@ function arrayBufferToBase64(buffer) {
   }
   return btoa(binary);
 }
-
-export const deSerializeMetadata = (metadata) => {
-  const decoder = new TextDecoder();
-  const str = decoder.decode(metadata);
-  const data = JSON.parse(str);
-
-  if (('decoderConfig' in data) && ('descriptionInBase64' in data.decoderConfig)) {
-    data.decoderConfig.description = base64ToArrayBuffer(data.decoderConfig.descriptionInBase64);
-    delete data.decoderConfig.descriptionInBase64;
-  }
-  return data.decoderConfig;
-};
 
 const base64ToArrayBuffer = (base64) => {
   const binaryString = atob(base64);
