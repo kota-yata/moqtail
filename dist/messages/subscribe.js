@@ -29,6 +29,9 @@ export const deserializeSubscribe = async (controlReader) => {
     const subscriberPriority = await getUint8(controlReader);
     const groupOrder = await getUint8(controlReader);
     const filterType = await varIntToNumber(controlReader);
+    if (!Object.values(SUBSCRIBE_FILTER).includes(filterType)) {
+        throw new Error(`Invalid Subscribe Filter Type: ${filterType}`);
+    }
     const startGroup = filterType === SUBSCRIBE_FILTER.ABSOLUTE_START || filterType === SUBSCRIBE_FILTER.ABSOLUTE_RANGE ? await varIntToNumber(controlReader) : undefined;
     const startObject = filterType === SUBSCRIBE_FILTER.ABSOLUTE_START || filterType === SUBSCRIBE_FILTER.ABSOLUTE_RANGE ? await varIntToNumber(controlReader) : undefined;
     const endGroup = filterType === SUBSCRIBE_FILTER.ABSOLUTE_RANGE ? await varIntToNumber(controlReader) : undefined;

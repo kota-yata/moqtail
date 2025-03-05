@@ -1,3 +1,4 @@
+import { SUBSCRIBE_FILTER } from "../constants";
 import { Parameter } from "../parameter";
 export declare const serializeSubscribe: (props: {
     subscribeId: number;
@@ -6,7 +7,7 @@ export declare const serializeSubscribe: (props: {
     trackName: string;
     subscriberPriority: number;
     groupOrder: number;
-    filterType: number;
+    filterType: SUBSCRIBE_FILTER;
     startGroup?: number;
     startObject?: number;
     endGroup?: number;
@@ -19,7 +20,7 @@ export declare const deserializeSubscribe: (controlReader: ReadableStream) => Pr
     trackName: string;
     subscriberPriority: number;
     groupOrder: number;
-    filterType: number;
+    filterType: SUBSCRIBE_FILTER;
     startGroup: number;
     startObject: number;
     endGroup: number;

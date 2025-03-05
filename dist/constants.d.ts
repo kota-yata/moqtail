@@ -45,7 +45,7 @@ export declare const CONTROL_MESSAGE: {
     readonly UNANNOUNCE: 9;
     readonly ANNOUNCE_CANCEL: 12;
     readonly SUBSCRIBE_ANNOUNCES: 17;
-    readonly SUBCSRIBE_ANNOUNCES_OK: 18;
+    readonly SUBSCRIBE_ANNOUNCES_OK: 18;
     readonly SUBSCRIBE_ANNOUNCES_ERROR: 19;
     readonly UNSUBSCRIBE_ANNOUNCES: 20;
 };
@@ -97,6 +97,7 @@ export declare const ANNOUNCE_ERROR_REASON: {
     readonly NOT_SUPPORTED: 3;
     readonly UNINTERESTED: 4;
 };
+export type ANNOUNCE_ERROR_REASON = ObjectValueList<typeof ANNOUNCE_ERROR_REASON>;
 export declare const SUBSCRIBE_ANNOUNCES_ERROR_REASON: {
     readonly INTERNAL_ERROR: 0;
     readonly UNAUTHORIZED: 1;
@@ -104,6 +105,7 @@ export declare const SUBSCRIBE_ANNOUNCES_ERROR_REASON: {
     readonly NOT_SUPPORTED: 3;
     readonly NAMESPACE_PREFIX_UNKNOWN: 4;
 };
+export type SUBSCRIBE_ANNOUNCES_ERROR_REASON = ObjectValueList<typeof SUBSCRIBE_ANNOUNCES_ERROR_REASON>;
 export declare const STREAM: {
     readonly SUBGROUP_HEADER: 4;
     readonly FETCH_HEADER: 5;
@@ -136,11 +138,13 @@ export declare const TRACK_STATUS_CODE: {
     readonly FINISHED: 3;
     readonly SENDER_IS_RELAY: 4;
 };
+export type TRACK_STATUS_CODE = ObjectValueList<typeof TRACK_STATUS_CODE>;
 export declare const SUBSCRIBE_FILTER: {
     readonly LATEST_OBJECT: 2;
     readonly ABSOLUTE_START: 3;
     readonly ABSOLUTE_RANGE: 4;
 };
+export type SUBSCRIBE_FILTER = ObjectValueList<typeof SUBSCRIBE_FILTER>;
 export declare const CONTENT_EXISTS: {
     readonly NO: 0;
     readonly YES: 1;

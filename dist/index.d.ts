@@ -1,5 +1,6 @@
 export { serializeClientSetup, deserializeClientSetup } from './messages/clientSetup';
 export { serializeFetch, deserializeFetch } from './messages/fetch';
+export { serializeFetchCancel, deserializeFetchCancel } from './messages/fetchCancel';
 export { serializeFetchError, deserializeFetchError } from './messages/fetchError';
 export { serializeFetchOk, deserializeFetchOk } from './messages/fetchOk';
 export { serializeGoaway, deserializeGoaway } from './messages/goaway';
@@ -11,4 +12,15 @@ export { serializeSubscribeError, deserializeSubscribeError } from './messages/s
 export { serializeSubscribeOk, deserializeSubscribeOk } from './messages/subscribeOk';
 export { serializeSubscribesBlocked, deserializeSubscribesBlocked } from './messages/subscribesBlocked';
 export { serializeSubscribeUpdate, deserializeSubscribeUpdate } from './messages/subscribeUpdate';
+export { serializeTrackStatus, deserializeTrackStatus } from './messages/trackStatus';
+export { serializeTrackStatusRequest, deserializeTrackStatusRequest } from './messages/trackStatusRequest';
 export { serializeUnsubscribe, deserializeUnsubscribe } from './messages/unsubscribe';
+export { serializeAnnounce, deserializeAnnounce } from './messages/announce';
+export { serializeAnnounceOk, deserializeAnnounceOk } from './messages/announceOk';
+export { serializeAnnounceError, deserializeAnnounceError } from './messages/announceError';
+export { serializeUnannounce, deserializeUnannounce } from './messages/unannounce';
+export { serializeAnnounceCancel, deserializeAnnounceCancel } from './messages/announceCancel';
+export { serializeSubscribeAnnounces, deserializeSubscribeAnnounces } from './messages/subscribeAnnounces';
+export { serializeSubscribeAnnouncesOk, deserializeSubscribeAnnouncesOk } from './messages/subscribeAnnouncesOk';
+export { serializeSubscribeAnnouncesError, deserializeSubscribeAnnouncesError } from './messages/subscribeAnnouncesError';
+export { serializeUnsubscribeAnnounces, deserializeUnsubscribeAnnounces } from './messages/unsubscribeAnnounces';
