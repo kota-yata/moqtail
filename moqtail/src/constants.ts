@@ -15,7 +15,7 @@ export const PARAMETER = {
   MAX_CACHE_DURATION: { KEY: 0x04 },
   SETUP: {
     PATH: { KEY: 0x01 },
-    MAX_SUBSCRIBE_ID: { KEY: 0x2 },
+    MAX_REQUEST_ID: { KEY: 0x2 },
     MAX_AUTH_TOKEN_CACHE_SIZE: { KEY: 0x4 }
   }
 } as const;

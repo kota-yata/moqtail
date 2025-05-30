@@ -82,7 +82,7 @@ export class Publisher {
     const msg = serializeClientSetup({
       supportedVersions: this.supportedVersions,
       params: [
-        { type: PARAMETER.SETUP.MAX_SUBSCRIBE_ID.KEY, value: this.maxSubscribeId }
+        { type: PARAMETER.SETUP.MAX_REQUEST_ID.KEY, value: this.maxSubscribeId }
       ]
     });
     this.communicator.postMessage({ type: 'sendControlMessage', data: msg });

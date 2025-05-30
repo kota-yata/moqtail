@@ -5,7 +5,7 @@ export * from './messages/fetchCancel';
 export * from './messages/fetchError';
 export * from './messages/fetchOk';
 export * from './messages/goaway';
-export * from './messages/maxSubscribeId';
+export * from './messages/maxRequestId';
 export * from './messages/serverSetup';
 export * from './messages/subscribe';
 export * from './messages/subscribeDone';
