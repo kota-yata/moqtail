@@ -11,7 +11,7 @@ export * from './messages/subscribe';
 export * from './messages/subscribeDone';
 export * from './messages/subscribeError';
 export * from './messages/subscribeOk';
-export * from './messages/subscribesBlocked';
+export * from './messages/requestsBlocked';
 export * from './messages/subscribeUpdate';
 export * from './messages/trackStatus';
 export * from './messages/trackStatusRequest';
