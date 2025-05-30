@@ -44,8 +44,8 @@ export const deserializeParams = async (messageType: number, controlReader: Read
       }
     } else {
       switch (paramId) {
-        case PARAMETER.AUTHORIZATION_INFO.KEY:
-          ret.push({ type: PARAMETER.AUTHORIZATION_INFO.KEY, value: await varBytesToString(controlReader) });
+        case PARAMETER.AUTHORIZATION_TOKEN.KEY:
+          ret.push({ type: PARAMETER.AUTHORIZATION_TOKEN.KEY, value: await deserializeQuicVarInt(controlReader) });
           break;
         case PARAMETER.DELIVERY_TIMOUT.KEY:
           await deserializeQuicVarInt(controlReader); // length
