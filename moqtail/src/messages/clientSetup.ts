@@ -1,6 +1,6 @@
 import { CONTROL_MESSAGE } from "../constants";
 import { deserializeParams, serializeParams, type Parameter } from "../utils/parameter";
-import { concatBuffer, serializeQuicVarInt, deserializeQuicVarInt } from "../utils/bytes";
+import { concatBuffer, serializeQuicVarInt, deserializeQuicVarInt, setUint16 } from "../utils/bytes";
 
 export const serializeClientSetup = (props: { supportedVersions: number[], params?: Parameter[] }) => {
   const messageType = serializeQuicVarInt(CONTROL_MESSAGE.CLIENT_SETUP);
@@ -8,7 +8,7 @@ export const serializeClientSetup = (props: { supportedVersions: number[], param
   const version = props.supportedVersions.map(version => serializeQuicVarInt(version));
   const concatenatedVersions = concatBuffer(version);
   const parametersBytes = serializeParams(props.params || []);
-  const length = serializeQuicVarInt(concatBuffer([versionLength, concatenatedVersions, parametersBytes]).byteLength);
+  const length = setUint16(concatBuffer([versionLength, concatenatedVersions, parametersBytes]).byteLength);
   return concatBuffer([messageType, length, versionLength, concatenatedVersions, parametersBytes]);
 }
 
