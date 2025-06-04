@@ -1,6 +1,6 @@
 import { CONTROL_MESSAGE, GROUP_ORDER, SUBSCRIBE_FILTER } from "../constants";
 import { deserializeParams, type Parameter, serializeParams } from "../utils/parameter";
-import { concatBuffer, serializeQuicVarInt, stringToVarBytes, deserializeQuicVarInt, varBytesToString, setUint8, getUint8 } from "../utils/bytes";
+import { concatBuffer, serializeQuicVarInt, stringToVarBytes, deserializeQuicVarInt, varBytesToString, setUint8, getUint8, setUint16, getUint16 } from "../utils/bytes";
 import { deserializeNamespace } from "../utils/namespace";
 
 export const serializeSubscribe = (props: Subscribe) => {
@@ -18,12 +18,12 @@ export const serializeSubscribe = (props: Subscribe) => {
   const endGroupBytes = props.endGroup !== undefined ? serializeQuicVarInt(props.endGroup) : new Uint8Array();
   const parametersBytes = serializeParams(props.parameters || []);
   const body = concatBuffer([subscribeIdBytes, trackAliasBytes, namespaceLength, ...namespaceBytes, trackNameBytes, subscriberPriorityBytes, groupOrderBytes, filterTypeBytes, startGroupBytes, startObjectBytes, endGroupBytes, parametersBytes]);
-  const length = serializeQuicVarInt(body.byteLength);
+  const length = setUint16(body.byteLength);
   return concatBuffer([messageType, length, body]);
 }
 
 export const deserializeSubscribe = async (controlReader: ReadableStream): Promise<Subscribe> => {
-  await deserializeQuicVarInt(controlReader); // length
+  await getUint16(controlReader); // length
   const subscribeId = await deserializeQuicVarInt(controlReader);
   const trackAlias = await deserializeQuicVarInt(controlReader);
   const trackNamespace = await deserializeNamespace(controlReader);

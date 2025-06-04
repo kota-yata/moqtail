@@ -163,7 +163,12 @@ export const setUint8 = (v: number) => {
   return ret;
 };
 
-const setUint16 = (v: number) => {
+export const getUint16 = async (readableStream: ReadableStream): Promise<number> => {
+  const buf = await buffRead(readableStream, 2);
+  return new DataView(buf.buffer).getUint16(0);
+};
+
+export const setUint16 = (v: number) => {
   const ret = new Uint8Array(2);
   const view = new DataView(ret.buffer);
   view.setUint16(0, v);

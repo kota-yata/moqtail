@@ -1,4 +1,4 @@
-import { serializeQuicVarInt, stringToVarBytes, concatBuffer, deserializeQuicVarInt, varBytesToString, setUint8 } from '../utils/bytes';
+import { serializeQuicVarInt, stringToVarBytes, concatBuffer, deserializeQuicVarInt, varBytesToString, setUint8, setUint16, getUint16 } from '../utils/bytes';
 import { CONTROL_MESSAGE, SUBSCRIBE_DONE_REASON } from '../constants';
 
 export const serializeSubscribeDone = (props: { subscribeId: number, statusCode: SUBSCRIBE_DONE_REASON, reasonPhrase: string, streamCount: number }) => {
@@ -9,12 +9,12 @@ export const serializeSubscribeDone = (props: { subscribeId: number, statusCode:
   const reasonPhraseBytes = stringToVarBytes(props.reasonPhrase);
   const contentExists = setUint8(0);
   const body = concatBuffer([subscribeIdBytes, statusCodeBytes, streamCountBytes, reasonPhraseBytes, contentExists]);
-  const length = serializeQuicVarInt(body.byteLength);
+  const length = setUint16(body.byteLength);
   return concatBuffer([messageTypeBytes, length, body]);
 }
 
 export const deserializeSubscribeDone = async (controlReader: ReadableStream) => {
-  await deserializeQuicVarInt(controlReader); // length
+  await getUint16(controlReader); // length
   const subscribeId = await deserializeQuicVarInt(controlReader);
   const statusCode = await deserializeQuicVarInt(controlReader) as SUBSCRIBE_DONE_REASON;
   if (!Object.values(SUBSCRIBE_DONE_REASON).includes(statusCode)) {
