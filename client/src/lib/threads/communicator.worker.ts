@@ -120,7 +120,7 @@ class MoQTCommunicator {
       let done = false;
       while (!done) {
         const header = await deserializeSubgroupObjectHeader(reader);
-        done = header.objectStatus && (header.objectStatus === OBJECT_STATUS.END_OF_GROUP || header.objectStatus === OBJECT_STATUS.END_OF_TRACK || header.objectStatus === OBJECT_STATUS.END_OF_TRACK_AND_GROUP);
+        done = header.objectStatus && (header.objectStatus === OBJECT_STATUS.END_OF_GROUP || header.objectStatus === OBJECT_STATUS.END_OF_TRACK);
         if (!done) {
           const encodedChunkInit = await deserializeEncodedChunk(reader);
           postMessage({ type: 'subgroupObject', data: { header, encodedChunkInit, trackAlias, subgroupId } });

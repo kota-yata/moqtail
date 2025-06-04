@@ -45,7 +45,7 @@ export const deserializeFetch = async (controlReader: ReadableStream) => {
   const groupOrder = await getUint8(controlReader);
   const fetchType = await deserializeQuicVarInt(controlReader) as FETCH_TYPE;
 
-  if (fetchType !== FETCH_TYPE.STANDALONE && fetchType !== FETCH_TYPE.JOINING) {
+  if (fetchType !== FETCH_TYPE.STANDALONE && fetchType !== FETCH_TYPE.RELATIVE_JOINING && fetchType !== FETCH_TYPE.ABSOLUTE_JOINING) {
     throw new Error(`Invalid Fetch Type: ${fetchType}`);
   }
 

@@ -24,7 +24,7 @@ export class Publisher {
   private trackManager: TrackManager = new TrackManager();
   private supportedVersions = [MOQT_DRAFT10_VERSION];
   private selectedVersion = 0;
-  private maxSubscribeId = 1000;
+  private maxRequestId = 1000;
   constructor(props: PublisherInitProps) {
     this.communicator = new CommunicatorWorker();
     this.communicator.onmessage = this.communicatorMessageHandler.bind(this);
@@ -82,7 +82,7 @@ export class Publisher {
     const msg = serializeClientSetup({
       supportedVersions: this.supportedVersions,
       params: [
-        { type: PARAMETER.SETUP.MAX_SUBSCRIBE_ID.KEY, value: this.maxSubscribeId }
+        { type: PARAMETER.SETUP.MAX_REQUEST_ID.KEY, value: this.maxRequestId }
       ]
     });
     this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
