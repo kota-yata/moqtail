@@ -12,8 +12,6 @@ import AudioDecoderWorker from './threads/audio/decoder.worker?worker';
 // @ts-ignore
 import VideoRendererWorker from './threads/video/renderer.worker?worker';
 
-type RegisteredSubscription = { subscribe: Subscribe, subscribeOk: boolean, decoder: Worker };
-
 export class Subscriber {
   private supportedVersions = [MOQT_DRAFT08_VERSION, MOQT_DRAFT09_VERSION, MOQT_DRAFT10_VERSION];
   private selectedVersion = 0;
@@ -40,7 +38,7 @@ export class Subscriber {
     const decoder: Worker = trackType === 'video' ? new VideoDecoderWorker() : new AudioDecoderWorker();
     decoder.onmessage = this.decoderMessageHandler.bind(this);
     decoder.postMessage({ type: 'init', data: props });
-    this.subscription.push({ subscribe: props, subscribeOk: false, decoder });
+    this.subscription.push({ subscribe: props, subscribeOk: false, decoder, type: trackType });
   }
   unsubscribe(trackName: string) {
     const sub = this.subscription.find(s => s.subscribe.trackName === trackName);
@@ -130,6 +128,15 @@ export class Subscriber {
     case `ctrl-${CONTROL_MESSAGE.SUBSCRIBE_ERROR}`:
       msg = message.data.data as SubscribeError;
       Mogger.error(`Subscribe error for alias ${msg.trackAlias}: ${msg.reasonPhrase}`);
+      const subscriptionError = this.subscription.find(sub => sub.subscribe.trackAlias === msg.trackAlias);
+      if (!subscriptionError) {
+        Mogger.error(`Unknown subscribeError with trackAlias:${msg.trackAlias} received`);
+        this.communicator.postMessage({ type: 'closeSession', data: null });
+        break;
+      }
+      this.subscription = this.subscription.filter(sub => sub.subscribe.trackAlias !== msg.trackAlias);
+      subscriptionError.decoder.terminate();
+      this.communicator.postMessage({ type: 'closeStream', data: { trackAlias: msg.trackAlias } });
       break;
     case `stream-${STREAM.SUBGROUP_HEADER}`:
       const subgroupHeader: SubgroupHeader = message.data.data;
@@ -163,23 +170,46 @@ export class Subscriber {
       this.communicator.postMessage({ type: 'closeStream', data: { subgroupId: message.data.data.subgroupId } });
       break;
     case 'datagramObject':
-      const datagramObject = message.data.data as { header: Datagram, encodedChunkInit: EncodedAudioChunkInit };
-      if (this.audioWaitingForKeyFrame && datagramObject.encodedChunkInit.type !== 'key') {
-        Mogger.debug('Waiting for audio key frame...');
-        break;
-      }
-      this.audioWaitingForKeyFrame = false;
+      const datagramObject = message.data.data as { header: Datagram, encodedChunkInit: EncodedAudioChunkInit | EncodedVideoChunkInit };
+      
       sub = this.getSubscriptionByTrackAlias(datagramObject.header.trackAlias);
-      let audioDecoderConfig = null;
-      datagramObject.header.extensionHeaders.map(h => {
-        if (h.id !== LOC_EXTENSION_HEADER_TYPE.AUDIO_CONFIG) return;
-        const readableStream = this.generateReadableStreamFromBuffer(h.value as Uint8Array);
-        deserializeAudioDecoderConfig(readableStream).then((config) => {
-          audioDecoderConfig = config;
+      
+      if (sub.type === 'video') {
+        console.log('Datagram video object received', datagramObject.header.groupId, datagramObject.header.objectId);
+        if (this.videoWaitingForKeyFrame && datagramObject.encodedChunkInit.type !== 'key') {
+          Mogger.debug('Waiting for video key frame...');
+          break;
+        }
+        this.videoWaitingForKeyFrame = false;
+        
+        let videoDecoderConfig = null;
+        datagramObject.header.extensionHeaders.map(h => {
+          if (h.id === LOC_EXTENSION_HEADER_TYPE.VIDEO_CONFIG) {
+            videoDecoderConfig = deserializeVideoDecoderConfig(h.value as Uint8Array);
+          }
         });
-      });
-      const audioChunk = new EncodedAudioChunk(datagramObject.encodedChunkInit);
-      sub.decoder.postMessage({ type: 'decode', data: { encodedAudioChunk: audioChunk, config: audioDecoderConfig } });
+        
+        const videoChunk = new EncodedVideoChunk(datagramObject.encodedChunkInit as EncodedVideoChunkInit);
+        sub.decoder.postMessage({ type: 'decode', data: { encodedVideoChunk: videoChunk, config: videoDecoderConfig } });
+      } else {
+        if (this.audioWaitingForKeyFrame && datagramObject.encodedChunkInit.type !== 'key') {
+          Mogger.debug('Waiting for audio key frame...');
+          break;
+        }
+        this.audioWaitingForKeyFrame = false;
+        
+        let audioDecoderConfig = null;
+        datagramObject.header.extensionHeaders.map(h => {
+          if (h.id !== LOC_EXTENSION_HEADER_TYPE.AUDIO_CONFIG) return;
+          const readableStream = this.generateReadableStreamFromBuffer(h.value as Uint8Array);
+          deserializeAudioDecoderConfig(readableStream).then((config) => {
+            audioDecoderConfig = config;
+          });
+        });
+        
+        const audioChunk = new EncodedAudioChunk(datagramObject.encodedChunkInit as EncodedAudioChunkInit);
+        sub.decoder.postMessage({ type: 'decode', data: { encodedAudioChunk: audioChunk, config: audioDecoderConfig } });
+      }
       break;
     case 'error':
       Mogger.error(`Subscriber communicator: ${message.data.data}`);

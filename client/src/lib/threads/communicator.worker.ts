@@ -226,7 +226,7 @@ class MoQTCommunicator {
         });
         // TODO: the ideal structure is doing below outside of communicator worker as this is not communicator's scope to parse message
         // currently parsing here because I haven't found the way to pass readableStream correctly without causing non-byte stream error
-        this.readDatagramObject(readableStream,);
+        this.readDatagramObject(readableStream);
       }
     }
   }

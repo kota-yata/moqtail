@@ -10,7 +10,6 @@ export const VIDEO_ENCODER_DEFAULT_CONFIG: VideoEncoderConfig = {
   width: 480,
   height: 360,
   framerate: 30,
-  scalabilityMode: 'L1T2',
   latencyMode: 'realtime'
 };
 export const AUDIO_ENCODER_DEFAULT_CONFIG: AudioEncoderConfig = {

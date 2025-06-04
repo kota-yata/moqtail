@@ -123,7 +123,6 @@ export class Publisher {
     this.communicator.postMessage({ type: 'sendSubgroupObject', data: { subgroupObject, subgroupId: lastSubgroupId } });
     // instead of closing from the publisher, the subscriber close the stream after receiving the last object
     // that way, 'short buffer' error in the subscriber can be avoided
-    // this.communicator.postMessage({ type: 'closeSubgroupStreams', data: subgroupIds });
   }
   // find all track aliases of subscribers that are interested in the latest object
   private getAliasOfSubscribersWithLatestObjectFilter(track: Track) {
@@ -143,6 +142,101 @@ export class Publisher {
     }
     targetTrack.streamCount++;
   }
+
+  // Common method to prepare video chunk data
+  private prepareVideoChunkData(
+    videoChunkMsg: any,
+    targetTrack: Track
+  ): { videoChunkBytes: Uint8Array; extensionHeaders: ExtensionHeader[] } {
+    const videoChunkBytes = serializeEncodedChunk(videoChunkMsg.chunk);
+    
+    let extensionHeaders: ExtensionHeader[] = [];
+    
+    // if (videoChunkMsg.metadata.decoderConfig.codec === 'avc1.42001e') {
+    //   extensionHeaders = getMiExtensionHeaders(MI_MEDIA_TYPE.H264AVCC, videoChunkMsg.metadata.decoderConfig, videoChunkMsg.chunk, videoChunkMsg.metadata.totalChunkCount);
+    // } else if (videoChunkMsg.metadata.decoderConfig) {
+    //   extensionHeaders = [videoDecoderConfigToExtensionHeader(videoChunkMsg.metadata.decoderConfig)];
+    // }
+    if (videoChunkMsg.metadata.decoderConfig) {
+      extensionHeaders = [videoDecoderConfigToExtensionHeader(videoChunkMsg.metadata.decoderConfig)];
+    }
+    
+    // Add capture timestamp for latency measurement (less frequent)
+    // if (videoChunkMsg.chunk.timestamp % 4 === 0) { // %4 is just a random number. I want the latency measurement to be less frequent
+    //   extensionHeaders.push(captureTimestampToExtensionHeader(Math.round(performance.timeOrigin) + (performance.now() | 0)));
+    // }
+    
+    return { videoChunkBytes, extensionHeaders };
+  }
+
+  private sendVideoAsDatagram(videoChunkMsg: MoqtailVideoChunkMessage, targetTrack: Track) {
+    if (videoChunkMsg.metadata.frameType === 'key') {
+      targetTrack.largestGroupId !== undefined ? targetTrack.largestGroupId++ : targetTrack.largestGroupId = 0;
+      targetTrack.largestObjectId = 0;
+    } else {
+      targetTrack.largestObjectId !== undefined ? targetTrack.largestObjectId++ : targetTrack.largestObjectId = 0;
+    }
+
+    const { videoChunkBytes, extensionHeaders } = this.prepareVideoChunkData(videoChunkMsg, targetTrack);
+    
+    // Send to interested subscribers
+    const interestedAliases = this.getAliasOfSubscribersWithLatestObjectFilter(targetTrack);
+    for (const alias of interestedAliases) {
+      const datagramObject = serializeDatagram({
+        trackAlias: alias,
+        groupId: targetTrack.largestGroupId,
+        objectId: targetTrack.largestObjectId,
+        publisherPriority: this.getPublisherPriority(targetTrack.type),
+        extensionHeaders,
+        payload: videoChunkBytes,
+      });
+      this.communicator.postMessage({ type: 'sendDatagram', data: datagramObject });
+    }
+  }
+
+  private sendVideoAsStream(videoChunkMsg: MoqtailVideoChunkMessage, targetTrack: Track) {
+    const group = targetTrack.groups.find(g => g.groupId === targetTrack.largestGroupId);
+    let subgroupId = (videoChunkMsg.metadata.temporalLayerId ?? 0) + (targetTrack.largestGroupId !== undefined ? targetTrack.largestGroupId : 0);
+    
+    if (videoChunkMsg.metadata.frameType === 'key') {
+      // Create new group
+      targetTrack.largestGroupId !== undefined ? targetTrack.largestGroupId++ : targetTrack.largestGroupId = 0;
+      targetTrack.largestObjectId = undefined;
+      // Reset subgroupId for key frame (largetGroupId is incremented above)
+      subgroupId = (videoChunkMsg.metadata.temporalLayerId ?? 0) + (targetTrack.largestGroupId !== undefined ? targetTrack.largestGroupId : 0);
+      targetTrack.groups.push({ groupId: targetTrack.largestGroupId, publishedSubgroupIds: [subgroupId] });
+      this.createSubgroupStream(subgroupId, targetTrack);
+    } else {
+      // if not a key frame, find the largest group
+      if (!group) {
+        Mogger.error(`groupId ${targetTrack.largestGroupId} not found`);
+        return;
+      }
+      // If this frame is the first object of the subgroup, create a unidirectional stream with SUBGROUP_HEADER
+      // Non-key frames that are the first in their subgroup is only possible when SVC
+      if (!group.publishedSubgroupIds.includes(subgroupId)) {
+        this.createSubgroupStream(subgroupId, targetTrack);
+        group.publishedSubgroupIds.push(subgroupId);
+      }
+    }
+    targetTrack.largestObjectId !== undefined ? targetTrack.largestObjectId++ : targetTrack.largestObjectId = 0;
+    const { videoChunkBytes, extensionHeaders } = this.prepareVideoChunkData(videoChunkMsg, targetTrack);
+    
+    const subgroupObject = serializeSubgroupObject({
+      objectId: targetTrack.largestObjectId,
+      extensionHeaders,
+      payload: videoChunkBytes
+    });
+    this.communicator.postMessage({ type: 'sendSubgroupObject', data: { subgroupObject, subgroupId } });
+
+    // Send END_OF_GROUP if this is the last object
+    const isLast = targetTrack.largestObjectId + 1 === targetTrack.encoderConfig.keyFrameDuration;
+    if (isLast) {
+      this.sendEndOfGroup(subgroupId, targetTrack.largestObjectId + 1);
+    }
+  }
+
+  // ------- Message Handlers for workers -------
   private communicatorMessageHandler(message: MessageEvent) {
     let msg;
     switch (message.data.type) {
@@ -214,59 +308,20 @@ export class Publisher {
   private videoEncoderMessageHandler(message: MessageEvent) {
     const data = message.data as ThreadMessage;
     switch (data.type) {
-    // handling the latest encoded video chunk
     case 'videoChunk':
-      const videoChunkMsg = data.data as { chunk: EncodedVideoChunk, metadata: EncodedVideoChunkMetadata & { frameType: EncodedVideoChunkType, totalChunkCount: number }, trackName: string };
+      const videoChunkMsg = data.data as MoqtailVideoChunkMessage;
       const targetTrack = this.trackManager.getTrack({ name: videoChunkMsg.trackName });
       if (!targetTrack) {
         Mogger.error(`Track ${videoChunkMsg.trackName} not found`);
         return;
       }
-      const group = targetTrack.groups.find(g => g.groupId === targetTrack.largestGroupId);
-      let subgroupId = (videoChunkMsg.metadata.temporalLayerId ?? 0) + (targetTrack.largestGroupId !== undefined ? targetTrack.largestGroupId : 0);
-      if (videoChunkMsg.metadata.frameType === 'key') {
-        // if key frame, create a new group and subgroup
-        targetTrack.largestGroupId !== undefined ? targetTrack.largestGroupId++ : targetTrack.largestGroupId = 0;
-        targetTrack.largestObjectId = undefined;
-        subgroupId = (videoChunkMsg.metadata.temporalLayerId ?? 0) + (targetTrack.largestGroupId !== undefined ? targetTrack.largestGroupId : 0);
-        targetTrack.groups.push({ groupId: targetTrack.largestGroupId, publishedSubgroupIds: [subgroupId] });
-        this.createSubgroupStream(subgroupId, targetTrack);
+
+      // Check if we should send as datagram or stream
+      if (targetTrack.objectForwardingPrefereces === 'Datagram') {
+        this.sendVideoAsDatagram(videoChunkMsg, targetTrack);
       } else {
-        // if not a key frame, find the largest group
-        if (!group) {
-          Mogger.error(`groupId ${targetTrack.largestGroupId} not found`);
-          return;
-        }
-        // if this frame is the first object of the subgroup, create a unidirectional stream with SUBGROUP_HEADER
-        if (!group.publishedSubgroupIds.includes(subgroupId)) {
-          this.createSubgroupStream(subgroupId, targetTrack);
-          group.publishedSubgroupIds.push(subgroupId);
-        }
+        this.sendVideoAsStream(videoChunkMsg, targetTrack);
       }
-      const videoChunkBytes = serializeEncodedChunk(videoChunkMsg.chunk);
-      // finally send object
-      targetTrack.largestObjectId !== undefined ? targetTrack.largestObjectId++ : targetTrack.largestObjectId = 0;
-      let extensionHeaders: ExtensionHeader[] = [];
-      // if (videoChunkMsg.metadata.decoderConfig.codec === 'avc1.42001e') {
-      //   extensionHeaders = getMiExtensionHeaders(MI_MEDIA_TYPE.H264AVCC, videoChunkMsg.metadata.decoderConfig, videoChunkMsg.chunk, videoChunkMsg.metadata.totalChunkCount);
-      // } else if (videoChunkMsg.metadata.decoderConfig) {
-      //   extensionHeaders = [videoDecoderConfigToExtensionHeader(videoChunkMsg.metadata.decoderConfig)];
-      // }
-      if (videoChunkMsg.metadata.decoderConfig) {
-        extensionHeaders = [videoDecoderConfigToExtensionHeader(videoChunkMsg.metadata.decoderConfig)];
-      };
-      // if (videoChunkMsg.chunk.timestamp % 4 === 0) { // %4 is just a random number. I want the latency measurement to be less frequent
-      //   extensionHeaders.push(captureTimestampToExtensionHeader(Math.round(performance.timeOrigin) + (performance.now() | 0)));
-      // }
-      const subgroupObject = serializeSubgroupObject({
-        objectId: targetTrack.largestObjectId,
-        extensionHeaders,
-        payload: videoChunkBytes
-      });
-      this.communicator.postMessage({ type: 'sendSubgroupObject', data: { subgroupObject, subgroupId } });
-      // if this is the last object in the group, send END_OF_GROUP
-      const isLast = targetTrack.largestObjectId + 1 === targetTrack.encoderConfig.keyFrameDuration;
-      if (isLast) this.sendEndOfGroup(subgroupId, targetTrack.largestObjectId + 1);
       break;
     case 'error':
       Mogger.error(`Error from video encoder: ${message.data.data}`);
@@ -278,7 +333,7 @@ export class Publisher {
     switch (data.type) {
     // handling the latest encoded audio chunk
     case 'audioChunk':
-      const audioChunkMsg = message.data.data as { chunk: EncodedAudioChunk, metadata: EncodedAudioChunkMetadata, trackName: string };
+      const audioChunkMsg = message.data.data as MoqtailAudioChunkMessage;
       const audioTrack = this.trackManager.getTrack({ name: audioChunkMsg.trackName });
       if (!audioTrack) {
         Mogger.error(`Track ${audioChunkMsg.trackName} not found`);

@@ -18,6 +18,8 @@
 
   let videoEncoderChoice = 'vp8';
 
+  let videoForwardingPreference: 'Subgroup' | 'Datagram' = 'Subgroup';
+
   export let moqtServerUrl: string;
   let namespace = ['moqtail'];
   let videoTrackName = 'video0';
@@ -60,7 +62,7 @@
       namespace,
       name: videoTrackName,
       type: 'video',
-      objectForwardingPrefereces: 'Subgroup',
+      objectForwardingPrefereces: videoForwardingPreference,
       encoderConfig: { encoderConfig: videoEncoders[videoEncoderChoice], keyFrameDuration },
       groupOrderPublisherPreference: GROUP_ORDER.ASCENDING,
       subscribers: [],
@@ -132,6 +134,13 @@
     <div>
       <label for="pub-track-keyframe-duration">Key Frame Duration {keyFrameDuration}</label>
       <input type="range" min="1" max="120" name="pub-track-keyframe-duration" bind:value={keyFrameDuration} />
+    </div>
+    <div>
+      <label for="pub-track-video-forwarding">Video Forwarding</label>
+      <select name="pub-track-video-forwarding" bind:value={videoForwardingPreference}>
+        <option value="Subgroup">Stream (Subgroup)</option>
+        <option value="Datagram">Datagram</option>
+      </select>
     </div>
     <div>
       <label for="pub-track-video-encoder-option">Video Encoder</label>
