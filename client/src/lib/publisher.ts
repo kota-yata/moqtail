@@ -1,7 +1,7 @@
 // main thread for publisher
 // interaction with the component page: video/audio start, stop, pause, resume,
 import {
-  CONTROL_MESSAGE, MOQT_DRAFT10_VERSION, PARAMETER,
+  CONTROL_MESSAGE, MOQT_DRAFT11_VERSION, PARAMETER,
   serializeAnnounce, serializeClientSetup, serializeSubgroupHeader, serializeSubscribeError, serializeSubscribeOk,
   serializeUnannounce, SUBSCRIBE_ERROR_REASON, SUBSCRIBE_FILTER, serializeSubgroupObject, serializeEncodedChunk,
   videoDecoderConfigToExtensionHeader, OBJECT_STATUS, serializeDatagram, audioDecoderConfigToExtensionHeader,
@@ -22,9 +22,9 @@ export class Publisher {
   private videoEncoders: { [key: string]: Worker } = {};
   private audioEncoder: { [key: string]: Worker } = {};
   private trackManager: TrackManager = new TrackManager();
-  private supportedVersions = [MOQT_DRAFT10_VERSION];
+  private supportedVersions = [MOQT_DRAFT11_VERSION];
   private selectedVersion = 0;
-  private maxSubscribeId = 1000;
+  private maxRequestId = 1000;
   constructor(props: PublisherInitProps) {
     this.communicator = new CommunicatorWorker();
     this.communicator.onmessage = this.communicatorMessageHandler.bind(this);
@@ -82,7 +82,7 @@ export class Publisher {
     const msg = serializeClientSetup({
       supportedVersions: this.supportedVersions,
       params: [
-        { type: PARAMETER.SETUP.MAX_SUBSCRIBE_ID.KEY, value: this.maxSubscribeId }
+        { type: PARAMETER.SETUP.MAX_REQUEST_ID.KEY, value: this.maxRequestId }
       ]
     });
     this.communicator.postMessage({ type: 'sendControlMessage', data: msg });

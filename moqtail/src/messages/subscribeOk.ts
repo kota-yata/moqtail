@@ -1,5 +1,5 @@
 import { CONTENT_EXISTS, CONTROL_MESSAGE } from "../constants";
-import { concatBuffer, serializeQuicVarInt, deserializeQuicVarInt, setUint8, getUint8 } from "../utils/bytes";
+import { concatBuffer, serializeQuicVarInt, deserializeQuicVarInt, setUint8, getUint8, setUint16, getUint16 } from "../utils/bytes";
 import { deserializeParams, type Parameter, serializeParams } from "../utils/parameter";
 
 export const serializeSubscribeOk = (props: SubscribeOk) => {
@@ -12,12 +12,12 @@ export const serializeSubscribeOk = (props: SubscribeOk) => {
   const largestObjectIdBytes = props.largestObjectId !== undefined ? serializeQuicVarInt(props.largestObjectId) : new Uint8Array();
   const parametersBytes = serializeParams(props.parameters || []);
   const body = concatBuffer([subscribeIdBytes, expiresBytes, groupOrderBytes, contentExistsBytes, largestGroupIdBytes, largestObjectIdBytes, parametersBytes]);
-  const length = serializeQuicVarInt(body.byteLength);
+  const length = setUint16(body.byteLength);
   return concatBuffer([messageType, length, body]);
 }
 
 export const deserializeSubscribeOk = async (controlReader: ReadableStream): Promise<SubscribeOk> => {
-  await deserializeQuicVarInt(controlReader); // length
+  await getUint16(controlReader); // length
   const subscribeId = await deserializeQuicVarInt(controlReader);
   const expires = await deserializeQuicVarInt(controlReader);
   const groupOrder = await getUint8(controlReader);

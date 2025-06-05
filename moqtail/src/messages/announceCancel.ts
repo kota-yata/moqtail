@@ -1,4 +1,4 @@
-import { serializeQuicVarInt, stringToVarBytes, concatBuffer, deserializeQuicVarInt, varBytesToString } from '../utils/bytes';
+import { serializeQuicVarInt, stringToVarBytes, concatBuffer, deserializeQuicVarInt, varBytesToString, setUint16, getUint16 } from '../utils/bytes';
 import { CONTROL_MESSAGE, ANNOUNCE_ERROR_REASON } from '../constants';
 import { deserializeNamespace } from '../utils/namespace';
 
@@ -9,12 +9,12 @@ export const serializeAnnounceCancel = (props: { trackNamespace: string[], error
   const errorCodeBytes = serializeQuicVarInt(props.errorCode);
   const reasonPhraseBytes = stringToVarBytes(props.reasonPhrase);
   const body = concatBuffer([trackNamespaceLength, ...trackNamespaceBytes, errorCodeBytes, reasonPhraseBytes]);
-  const length = serializeQuicVarInt(body.byteLength);
+  const length = setUint16(body.byteLength);
   return concatBuffer([messageTypeBytes, length, body]);
 }
 
 export const deserializeAnnounceCancel = async (controlReader: ReadableStream) => {
-  await deserializeQuicVarInt(controlReader); // length
+  await getUint16(controlReader); // length
   const trackNamespace = await deserializeNamespace(controlReader);
   const errorCode = await deserializeQuicVarInt(controlReader) as ANNOUNCE_ERROR_REASON;
   if (!Object.values(ANNOUNCE_ERROR_REASON).includes(errorCode)) {

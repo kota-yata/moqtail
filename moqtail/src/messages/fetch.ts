@@ -1,4 +1,4 @@
-import { serializeQuicVarInt, concatBuffer, deserializeQuicVarInt, stringToVarBytes, varBytesToString, setUint8, getUint8 } from '../utils/bytes';
+import { serializeQuicVarInt, concatBuffer, deserializeQuicVarInt, stringToVarBytes, varBytesToString, setUint8, getUint8, setUint16, getUint16 } from '../utils/bytes';
 import { CONTROL_MESSAGE, FETCH_TYPE } from '../constants';
 import { deserializeParams, type Parameter, serializeParams } from '../utils/parameter';
 import { deserializeNamespace } from '../utils/namespace';
@@ -34,18 +34,18 @@ export const serializeFetch = (props: { subscribeId: number, subscriberPriority:
     body = concatBuffer([subscribeIdBytes, subscriberPriorityBytes, groupOrderBytes, fetchTypeBytes, joiningSubscribeIdBytes, precedingGroupOffsetBytes, parametersBytes]);
   }
 
-  const length = serializeQuicVarInt(body.byteLength);
+  const length = setUint16(body.byteLength);
   return concatBuffer([messageTypeBytes, length, body]);
 }
 
 export const deserializeFetch = async (controlReader: ReadableStream) => {
-  await deserializeQuicVarInt(controlReader); // length
+  await getUint16(controlReader); // length
   const subscribeId = await deserializeQuicVarInt(controlReader);
   const subscriberPriority = await getUint8(controlReader);
   const groupOrder = await getUint8(controlReader);
   const fetchType = await deserializeQuicVarInt(controlReader) as FETCH_TYPE;
 
-  if (fetchType !== FETCH_TYPE.STANDALONE && fetchType !== FETCH_TYPE.JOINING) {
+  if (fetchType !== FETCH_TYPE.STANDALONE && fetchType !== FETCH_TYPE.RELATIVE_JOINING && fetchType !== FETCH_TYPE.ABSOLUTE_JOINING) {
     throw new Error(`Invalid Fetch Type: ${fetchType}`);
   }
 

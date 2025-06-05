@@ -1,4 +1,4 @@
-import { serializeQuicVarInt, concatBuffer, deserializeQuicVarInt, setUint8, getUint8 } from '../utils/bytes';
+import { serializeQuicVarInt, concatBuffer, deserializeQuicVarInt, setUint8, getUint8, setUint16, getUint16 } from '../utils/bytes';
 import { CONTROL_MESSAGE } from '../constants';
 import { deserializeParams, type Parameter, serializeParams } from '../utils/parameter';
 
@@ -11,11 +11,12 @@ export const serializeSubscribeUpdate = (props: { subscribeId: number, startGrou
   const subscriberPriorityBytes = setUint8(props.subscriberPriority);
   const parametersBytes = serializeParams(props.parameters);
   const body = concatBuffer([subscribeIdBytes, startGroupBytes, startObjectBytes, endGroupBytes, subscriberPriorityBytes, parametersBytes]);
-  const length = serializeQuicVarInt(body.byteLength);
+  const length = setUint16(body.byteLength);
   return concatBuffer([messageTypeBytes, length, body]);
 }
 
 export const deserializeSubscribeUpdate = async (controlReader: ReadableStream) => {
+  await getUint16(controlReader); // length
   const subscribeId = await deserializeQuicVarInt(controlReader);
   const startGroup = await deserializeQuicVarInt(controlReader);
   const startObject = await deserializeQuicVarInt(controlReader);
