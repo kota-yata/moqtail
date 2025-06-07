@@ -190,6 +190,7 @@ export class Publisher {
         extensionHeaders,
         payload: videoChunkBytes,
       });
+      console.log("Sending datagram object:", targetTrack.largestGroupId, targetTrack.largestObjectId);
       this.communicator.postMessage({ type: 'sendDatagram', data: datagramObject });
     }
   }
@@ -354,6 +355,7 @@ export class Publisher {
           extensionHeaders: audioChunkMsg.metadata.decoderConfig ? [audioDecoderConfigToExtensionHeader(audioChunkMsg.metadata.decoderConfig)]: [],
           payload: audioChunkBytes,
         });
+        console.log("Sending datagram object:", audioTrack.largestGroupId, audioTrack.largestObjectId);
         this.communicator.postMessage({ type: 'sendDatagram', data: datagramObject });
       }
       audioTrack.largestObjectId++;

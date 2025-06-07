@@ -215,6 +215,7 @@ class MoQTCommunicator {
     this.state = this.state | COMMUNICATOR_STATE.READING_DATAGRAM;
     while (this.state & COMMUNICATOR_STATE.READING_DATAGRAM) {
       const stream = await this.datagramReader.read();
+      console.log('datagram stream');
       if (!stream.done) {
         // Create a BYOT capable reader for the data by reading whole datagram
         const readableStream = new ReadableStream({
