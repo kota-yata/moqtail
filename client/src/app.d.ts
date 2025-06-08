@@ -42,6 +42,15 @@ declare global {
   type MoqtailEncodedVideoChunkMetadata = EncodedVideoChunkMetadata & { frameType: EncodedVideoChunkType, totalChunkCount: number }
   type MoqtailVideoChunkMessage = { chunk: EncodedVideoChunk, metadata: MoqtailEncodedVideoChunkMetadata, trackName: string }
   type MoqtailAudioChunkMessage = { chunk: EncodedAudioChunk, metadata: EncodedAudioChunkMetadata, trackName: string }
+  type ThreadMessage = {
+    type: string,
+    data: any,
+  }
+  interface RingBufferStats {
+    capacity: number;
+    writePos: number;
+    readPos: number;
+  }
 }
 
 export {};

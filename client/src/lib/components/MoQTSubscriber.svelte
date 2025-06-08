@@ -1,10 +1,8 @@
 <script lang="ts">
   import { Subscriber } from '$lib/subscriber';
-  import { onMount } from 'svelte';
   import { GROUP_ORDER, type Subscribe, SUBSCRIBE_FILTER } from 'moqtail';
 
   let canvasEl: HTMLCanvasElement;
-  let audioContext: AudioContext;
   let moqIsPlaying = false;
   let subscriberInit = false;
   let subscriber: Subscriber;
@@ -28,7 +26,7 @@
     });
     subscriberInit = true;
     subscriber.setCanvasElement(canvasEl);
-    subscriber.setAudioContext(audioContext);
+    subscriber.setAudioContext();
   };
   const setup = () => {
     if (!subscriber || setupSent) return;
@@ -61,14 +59,11 @@
   const stopStream = () => {
     subscriber.unsubscribe(videoTrackName);
     subscriber.unsubscribe(audioTrackName);
+    subscriber.stopAudio();
   };
   const canvasGoFullscreen = () => {
     canvasEl.requestFullscreen();
   };
-
-  onMount(() => {
-    audioContext = new AudioContext({ latencyHint: 'interactive' });
-  });
 </script>
 
 <div class="sub">
@@ -90,31 +85,20 @@
     </div>
     <div>
       <label for="pub-track-jitter">Jitter Buffer {jitterBufferSize}ms</label>
-      <input
+      <!-- <input
         type="range"
         min="0"
         max="60"
         step="10"
         name="pub-track-jitter"
         bind:value={jitterBufferSize}
-      />
+      /> -->
     </div>
   </div>
   <button on:click={connectToServer}>Connect to server</button>
   <button on:click={setup}>Setup</button>
   <button on:click={playStream}>Start playback</button>
   <button on:click={stopStream}>Stop playback</button>
-  <!-- <div>
-    <fieldset>
-      <legend>Video Quality</legend>
-      <input type="radio" name="sub-video-quality" on:change={qualityOnChange} value="low" checked />
-      <label for="sub-video-quality">Low</label>
-      <input type="radio" name="sub-video-quality" on:change={qualityOnChange} value="medium" />
-      <label for="sub-video-quality">Medium</label>
-      <input type="radio" name="sub-video-quality" on:change={qualityOnChange} value="high" />
-      <label for="sub-video-quality">High</label>
-    </fieldset>
-  </div> -->
 </div>
 
 <style>

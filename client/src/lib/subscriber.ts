@@ -1,7 +1,7 @@
 import { Mogger } from './utils/mogger';
 import { CONTROL_MESSAGE, deserializeVideoDecoderConfig, LOC_EXTENSION_HEADER_TYPE, MOQT_DRAFT08_VERSION, MOQT_DRAFT09_VERSION, MOQT_DRAFT10_VERSION, serializeClientSetup, serializeSubscribe, STREAM, deserializeAudioDecoderConfig, serializeUnsubscribe, OBJECT_STATUS } from 'moqtail';
 import type { Subscribe, ServerSetup, SubscribeOk, SubgroupHeader, SubgroupObject, SubscribeError, Datagram } from 'moqtail';
-import { moqVideoTransmissionLatencyStore } from './store';
+import { moqVideoTransmissionLatencyStore, ringStats } from './utils/store';
 
 // @ts-ignore
 import CommunicatorWorker from './threads/communicator.worker?worker';
@@ -11,6 +11,8 @@ import VideoDecoderWorker from './threads/video/decoder.worker?worker';
 import AudioDecoderWorker from './threads/audio/decoder.worker?worker';
 // @ts-ignore
 import VideoRendererWorker from './threads/video/renderer.worker?worker';
+// @ts-ignore
+import AudioWorkletURL from './threads/audio/processor.worker?worker&url';
 
 export class Subscriber {
   private supportedVersions = [MOQT_DRAFT08_VERSION, MOQT_DRAFT09_VERSION, MOQT_DRAFT10_VERSION];
@@ -18,8 +20,7 @@ export class Subscriber {
   private subscription: RegisteredSubscription[] = [];
   private videoWaitingForKeyFrame = true;
   private audioWaitingForKeyFrame = true;
-  private audioCtx: AudioContext;
-  private audioNextPlaybackTime = 0;
+  private audioNode: AudioWorkletNode;
   private communicator: Worker;
   private videoRenderer: Worker = new VideoRendererWorker();
   constructor(props: SubscriberInitProps) {
@@ -45,23 +46,35 @@ export class Subscriber {
     const msg = serializeUnsubscribe(sub.subscribe.subscribeId);
     this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
   }
+  stopAudio() {
+    if (this.audioNode) {
+      this.audioNode.disconnect();
+      this.audioNode = null;
+    }
+  }
   setCanvasElement(canvasElement: HTMLCanvasElement) {
     const offscreen = canvasElement.transferControlToOffscreen();
     this.videoRenderer.postMessage({ type: 'init', data: { canvas: offscreen } }, [offscreen]);
   }
-  setAudioContext(audioCtx: AudioContext) {
-    this.audioCtx = audioCtx;
+  async setAudioContext() {
+    const audioCtx = new AudioContext({ sampleRate: 48000 }); // TODO: use the sample rate from the server
+    await audioCtx.audioWorklet.addModule(AudioWorkletURL).catch((e) => {
+      Mogger.error(`Failed to load audio worklet module: ${e}`);
+      this.communicator.postMessage({ type: 'closeSession', data: null });
+    });
+    this.audioNode = new AudioWorkletNode(audioCtx, 'audio-playback-processor');
+    this.audioNode.port.postMessage({ type: 'init', sampleRate: audioCtx.sampleRate });
+    this.audioNode.port.onmessage = this.audioProcessorMessageHandler.bind(this);
+    this.audioNode.connect(audioCtx.destination);
   }
   private getSubscriptionByTrackAlias(trackAlias: number): RegisteredSubscription {
     const sub = this.subscription.find(s => s.subscribe.trackAlias === trackAlias);
     if (!sub) {
       const err = `Unknown subgroup object with alias:${trackAlias} received`;
-      // Mogger.error(err);
       this.communicator.postMessage({ type: 'closeSession', data: null });
       throw new Error(err);
     } else if (!sub.subscribeOk) {
       const err = `Subgroup Objcet with alias:${trackAlias} received before subscribeOk`;
-      // Mogger.error(err);
       this.communicator.postMessage({ type: 'closeSession', data: null });
       throw new Error(err);
     }
@@ -76,27 +89,6 @@ export class Subscriber {
         controller.close(); // Close the stream when done
       }
     });
-  }
-  private audioDataToAudioBuffer(audioData: AudioData) {
-    const audioBuffer = this.audioCtx.createBuffer(
-      audioData.numberOfChannels,
-      audioData.numberOfFrames,
-      audioData.sampleRate,
-    );
-    for (let channel = 0; channel < audioData.numberOfChannels; channel++) {
-      const channelData = new Float32Array(audioData.numberOfFrames);
-      audioData.copyTo(channelData, { planeIndex: channel });
-      audioBuffer.copyToChannel(channelData, channel, 0);
-    }
-    return audioBuffer;
-  }
-  private playDecodedAudio(audioBuffer: AudioBuffer) {
-    const source = this.audioCtx.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(this.audioCtx.destination);
-    if (this.audioNextPlaybackTime === 0) this.audioNextPlaybackTime = this.audioCtx.currentTime;
-    source.start(this.audioNextPlaybackTime, 0, audioBuffer.duration);
-    this.audioNextPlaybackTime += audioBuffer.duration;
   }
   communicatorMessageHandler(message: MessageEvent) {
     let msg;
@@ -224,9 +216,24 @@ export class Subscriber {
       break;
     case 'audioData':
       const ad = message.data.data.audioData as AudioData;
-      const audioBuffer = this.audioDataToAudioBuffer(ad);
-      this.playDecodedAudio(audioBuffer);
-      ad.close();
+      const audioBuffer = new Float32Array(ad.numberOfFrames * ad.numberOfChannels);
+      // assume monoral
+      ad.copyTo(audioBuffer, { planeIndex: 0 });
+      this.audioNode.port.postMessage({
+        type: 'audioData',
+        buffer: audioBuffer.buffer,
+      }, [audioBuffer.buffer]);
+      break;
+    }
+  }
+  audioProcessorMessageHandler(message: MessageEvent) {
+    switch (message.data.type) {
+    case 'stats':
+      const stats = message.data.stats as { capacity: number, readPos: number, writePos: number };
+      ringStats.set(stats);
+      break;
+    case 'error':
+      Mogger.error(`Audio processor error: ${message.data.data}`);
       break;
     }
   }

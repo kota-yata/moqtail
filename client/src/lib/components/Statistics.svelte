@@ -1,5 +1,5 @@
 <script>
-  import { moqVideoTransmissionLatencyStore } from '$lib/store';
+  import { moqVideoTransmissionLatencyStore } from '$lib/utils/store';
   import { Mogger } from '$lib/utils/mogger';
 
   let cpuLoad = 'Compute Pressure API not supported';
@@ -10,7 +10,8 @@
   };
 
   try {
-    const observer = new PressureObserver(pressureObserverCallback); // ts might be salty but let it be
+    // @ts-ignore PressureObserver is not defined yet
+    const observer = new PressureObserver(pressureObserverCallback);
     observer.observe('cpu', { sampleInterval: 1000, });
   } catch (error) {
     Mogger.error('PressureObserver not supported:', error);
@@ -19,11 +20,15 @@
 
 <div class="statistics">
   <h3>Statistics</h3>
-  <div class="stat-item">
-    <span class="stat-label">Transmission Latency:</span> {$moqVideoTransmissionLatencyStore}ms
-  </div>
-  <div class="stat-item">
-    <span class="stat-label">CPU Load:</span> {cpuLoad}
+  <div class="stat-text">
+    <div class="stat-item">
+      <span class="stat-label">Transmission Latency:</span>
+      <span class="stat-value">{$moqVideoTransmissionLatencyStore}ms</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">CPU Load:</span>
+      <span class="stat-value">{cpuLoad}</span>
+    </div>
   </div>
 </div>
 
@@ -36,6 +41,7 @@
 
   .stat-item {
     margin-bottom: 0.5rem;
+    min-width: 250px;
   }
 
   .stat-label {
