@@ -167,7 +167,7 @@ export class Subscriber {
       sub = this.getSubscriptionByTrackAlias(datagramObject.header.trackAlias);
       
       if (sub.type === 'video') {
-        console.log('Datagram video object received', datagramObject.header.groupId, datagramObject.header.objectId);
+        Mogger.debug(`Datagram video object with groupId ${datagramObject.header.groupId} and objectId ${datagramObject.header.objectId} received`);
         if (this.videoWaitingForKeyFrame && datagramObject.encodedChunkInit.type !== 'key') {
           Mogger.debug('Waiting for video key frame...');
           break;
