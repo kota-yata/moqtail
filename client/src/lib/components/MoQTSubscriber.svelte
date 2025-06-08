@@ -46,11 +46,11 @@
       groupOrder: GROUP_ORDER.ASCENDING,
       filterType: SUBSCRIBE_FILTER.LATEST_OBJECT,
     };
-    // subscriber.subscribe(subscribeVideo, 'video');
+    subscriber.subscribe(subscribeVideo, 'video');
     const subscribeAudio: Subscribe = {
       trackNamespace: namespace,
       trackName: audioTrackName,
-      subscribeId: 0,
+      subscribeId: 1,
       trackAlias: 241,
       subscriberPriority: 1,
       groupOrder: GROUP_ORDER.ASCENDING,

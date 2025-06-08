@@ -170,12 +170,14 @@ export class Publisher {
   }
 
   private sendVideoAsDatagram(videoChunkMsg: MoqtailVideoChunkMessage, targetTrack: Track) {
-    if (videoChunkMsg.metadata.frameType === 'key') {
-      targetTrack.largestGroupId !== undefined ? targetTrack.largestGroupId++ : targetTrack.largestGroupId = 0;
-      targetTrack.largestObjectId = 0;
-    } else {
-      targetTrack.largestObjectId !== undefined ? targetTrack.largestObjectId++ : targetTrack.largestObjectId = 0;
-    }
+    // if (videoChunkMsg.metadata.frameType === 'key') {
+    //   targetTrack.largestGroupId !== undefined ? targetTrack.largestGroupId++ : targetTrack.largestGroupId = 0;
+    //   targetTrack.largestObjectId = 0;
+    // } else {
+    //   targetTrack.largestObjectId !== undefined ? targetTrack.largestObjectId++ : targetTrack.largestObjectId = 0;
+    // }
+    targetTrack.largestGroupId !== undefined ? targetTrack.largestGroupId++ : targetTrack.largestGroupId = 0;
+    targetTrack.largestObjectId = 0;
 
     const { videoChunkBytes, extensionHeaders } = this.prepareVideoChunkData(videoChunkMsg, targetTrack);
     
@@ -190,7 +192,7 @@ export class Publisher {
         extensionHeaders,
         payload: videoChunkBytes,
       });
-      console.log("Sending datagram object:", targetTrack.largestGroupId, targetTrack.largestObjectId);
+      console.log("Sending datagram object:", videoChunkBytes.byteLength);
       this.communicator.postMessage({ type: 'sendDatagram', data: datagramObject });
     }
   }
@@ -283,7 +285,7 @@ export class Publisher {
       });
       const sub_ok = serializeSubscribeOk({ subscribeId: msg.subscribeId, expires: 0, groupOrder: msg.groupOrder || targetTrack.groupOrderPublisherPreference, contentExists: 0 });
       this.communicator.postMessage({ type: 'sendControlMessage', data: sub_ok });
-      Mogger.info(`Subscribe with namespace ${msg.trackName} successful`);
+      Mogger.info(`Initialized subscription for track ${msg.trackName} with subscribeId ${msg.subscribeId} and alias ${msg.trackAlias}`);
       break;
     case `ctrl-${CONTROL_MESSAGE.UNSUBSCRIBE}`:
       msg = message.data.data as Unsubscribe;
