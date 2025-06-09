@@ -24,6 +24,7 @@ export class Subscriber {
   private currentVideoGroupId: number | null = null;
   private subgroupToGroup: Map<number, number> = new Map();
   private datagramBuffer = new DatagramBuffer();
+  private videoTimestampOffset: number | null = null;
   private audioNode: AudioWorkletNode;
   private communicator: Worker;
   private videoRenderer: Worker = new VideoRendererWorker();
@@ -155,6 +156,10 @@ export class Subscriber {
       }
       this.videoWaitingForKeyFrame = false;
       this.currentVideoGroupId = groupId ?? null;
+      if (this.videoTimestampOffset === null) {
+        this.videoTimestampOffset = performance.now() - (encodedChunkInit.timestamp ?? 0) / 1000;
+        this.datagramBuffer.setTimestampOffset(this.videoTimestampOffset);
+      }
       const videoTrackAlias: number = message.data.data.trackAlias;
       sub = this.subscription.find(s => s.subscribe.trackAlias === videoTrackAlias);
       const header = message.data.data.header as SubgroupObject;
@@ -171,19 +176,10 @@ export class Subscriber {
       const chunk = new EncodedVideoChunk(encodedChunkInit);
       sub.decoder.postMessage({ type: 'decode', data: { encodedVideoChunk: chunk, config: videoDecoderConfig } });
 
-      // flush buffered datagrams for this group
-      if (groupId !== undefined && this.datagramBuffer.hasGroup(groupId)) {
-        const pending = this.datagramBuffer.popGroup(groupId);
-        for (const d of pending) {
-          let vConfig: VideoDecoderConfig | null = null;
-          d.header.extensionHeaders.map(h => {
-            if (h.id === LOC_EXTENSION_HEADER_TYPE.VIDEO_CONFIG) {
-              vConfig = deserializeVideoDecoderConfig(h.value as Uint8Array);
-            }
-          });
-          const vChunk = new EncodedVideoChunk(d.encodedChunkInit as EncodedVideoChunkInit);
-          sub.decoder.postMessage({ type: 'decode', data: { encodedVideoChunk: vChunk, config: vConfig } });
-        }
+      if (groupId !== undefined) {
+        this.datagramBuffer.releaseGroup(groupId);
+        const ready = this.datagramBuffer.dequeueReady(performance.now());
+        this.decodeDatagramQueue(ready, sub);
       }
       break;
     case 'subgroupObjectStatus':
@@ -196,21 +192,13 @@ export class Subscriber {
       
       if (sub.type === 'video') {
         Mogger.debug(`Datagram video object with groupId ${datagramObject.header.groupId} and objectId ${datagramObject.header.objectId} received`);
-        if (this.videoWaitingForKeyFrame) {
-          // buffer until key frame arrives
-          this.datagramBuffer.enqueue(datagramObject as BufferedDatagram);
-          break;
+        this.datagramBuffer.enqueue(datagramObject as BufferedDatagram);
+
+        if (!this.videoWaitingForKeyFrame) {
+          this.datagramBuffer.releaseGroup(datagramObject.header.groupId);
+          const ready = this.datagramBuffer.dequeueReady(performance.now());
+          this.decodeDatagramQueue(ready, sub);
         }
-
-        let videoDecoderConfig = null;
-        datagramObject.header.extensionHeaders.map(h => {
-          if (h.id === LOC_EXTENSION_HEADER_TYPE.VIDEO_CONFIG) {
-            videoDecoderConfig = deserializeVideoDecoderConfig(h.value as Uint8Array);
-          }
-        });
-
-        const videoChunk = new EncodedVideoChunk(datagramObject.encodedChunkInit as EncodedVideoChunkInit);
-        sub.decoder.postMessage({ type: 'decode', data: { encodedVideoChunk: videoChunk, config: videoDecoderConfig } });
       } else {
         if (this.audioWaitingForKeyFrame && datagramObject.encodedChunkInit.type !== 'key') {
           Mogger.debug('Waiting for audio key frame...');
@@ -263,6 +251,19 @@ export class Subscriber {
     case 'error':
       Mogger.error(`Audio processor error: ${message.data.data}`);
       break;
+    }
+  }
+
+  private decodeDatagramQueue(queue: BufferedDatagram[], sub: RegisteredSubscription) {
+    for (const d of queue) {
+      let vConfig: VideoDecoderConfig | null = null;
+      d.header.extensionHeaders.map(h => {
+        if (h.id === LOC_EXTENSION_HEADER_TYPE.VIDEO_CONFIG) {
+          vConfig = deserializeVideoDecoderConfig(h.value as Uint8Array);
+        }
+      });
+      const vChunk = new EncodedVideoChunk(d.encodedChunkInit as EncodedVideoChunkInit);
+      sub.decoder.postMessage({ type: 'decode', data: { encodedVideoChunk: vChunk, config: vConfig } });
     }
   }
 }
