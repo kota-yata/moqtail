@@ -240,6 +240,51 @@ export class Publisher {
     }
   }
 
+  private sendKeyFrameStream(videoChunkMsg: MoqtailVideoChunkMessage, targetTrack: Track) {
+    if (videoChunkMsg.metadata.frameType === 'key') {
+      // Start a new group and send key frame over stream
+      const subgroupId = (videoChunkMsg.metadata.temporalLayerId ?? 0) + ((targetTrack.largestGroupId ?? -1) + 1);
+      targetTrack.largestGroupId = (targetTrack.largestGroupId ?? -1) + 1;
+      targetTrack.largestObjectId = undefined;
+      targetTrack.groups.push({ groupId: targetTrack.largestGroupId, publishedSubgroupIds: [subgroupId] });
+      this.createSubgroupStream(subgroupId, targetTrack);
+
+      targetTrack.largestObjectId !== undefined ? targetTrack.largestObjectId++ : targetTrack.largestObjectId = 0;
+      const { videoChunkBytes, extensionHeaders } = this.prepareVideoChunkData(videoChunkMsg, targetTrack);
+
+      const subgroupObject = serializeSubgroupObject({
+        objectId: targetTrack.largestObjectId,
+        extensionHeaders,
+        payload: videoChunkBytes
+      });
+      this.communicator.postMessage({ type: 'sendSubgroupObject', data: { subgroupObject, subgroupId } });
+    } else {
+      // Delta frames are sent as datagram objects within the current group
+      if (targetTrack.largestGroupId === undefined) return; // drop until first key frame
+      targetTrack.largestObjectId !== undefined ? targetTrack.largestObjectId++ : targetTrack.largestObjectId = 0;
+      const { videoChunkBytes, extensionHeaders } = this.prepareVideoChunkData(videoChunkMsg, targetTrack);
+      const aliases = this.getAliasOfSubscribersWithLatestObjectFilter(targetTrack);
+      for (const alias of aliases) {
+        const datagramObject = serializeDatagram({
+          trackAlias: alias,
+          groupId: targetTrack.largestGroupId,
+          objectId: targetTrack.largestObjectId,
+          publisherPriority: this.getPublisherPriority(targetTrack.type),
+          extensionHeaders,
+          payload: videoChunkBytes
+        });
+        this.communicator.postMessage({ type: 'sendDatagram', data: datagramObject });
+      }
+    }
+
+    // Send END_OF_GROUP if this is the last object of the group
+    if (targetTrack.largestObjectId !== undefined &&
+        targetTrack.encoderConfig &&
+        targetTrack.largestObjectId + 1 === targetTrack.encoderConfig.keyFrameDuration) {
+      this.sendEndOfGroup(targetTrack.largestGroupId, targetTrack.largestObjectId + 1);
+    }
+  }
+
   // ------- Message Handlers for workers -------
   private communicatorMessageHandler(message: MessageEvent) {
     let msg;
@@ -320,9 +365,11 @@ export class Publisher {
         return;
       }
 
-      // Check if we should send as datagram or stream
+      // Decide how to forward the object
       if (targetTrack.objectForwardingPrefereces === 'Datagram') {
         this.sendVideoAsDatagram(videoChunkMsg, targetTrack);
+      } else if (targetTrack.objectForwardingPrefereces === 'KeyFrameStream') {
+        this.sendKeyFrameStream(videoChunkMsg, targetTrack);
       } else {
         this.sendVideoAsStream(videoChunkMsg, targetTrack);
       }
