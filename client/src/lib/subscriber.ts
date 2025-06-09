@@ -3,6 +3,7 @@ import { CONTROL_MESSAGE, deserializeVideoDecoderConfig, LOC_EXTENSION_HEADER_TY
 import type { Subscribe, ServerSetup, SubscribeOk, SubgroupHeader, SubgroupObject, SubscribeError, Datagram } from 'moqtail';
 import { moqVideoTransmissionLatencyStore, ringStats } from './utils/store';
 
+import { DatagramBuffer, BufferedDatagram } from "./utils/datagramBuffer";
 // @ts-ignore
 import CommunicatorWorker from './threads/communicator.worker?worker';
 // @ts-ignore
@@ -20,6 +21,9 @@ export class Subscriber {
   private subscription: RegisteredSubscription[] = [];
   private videoWaitingForKeyFrame = true;
   private audioWaitingForKeyFrame = true;
+  private currentVideoGroupId: number | null = null;
+  private subgroupToGroup: Map<number, number> = new Map();
+  private datagramBuffer = new DatagramBuffer();
   private audioNode: AudioWorkletNode;
   private communicator: Worker;
   private videoRenderer: Worker = new VideoRendererWorker();
@@ -134,14 +138,23 @@ export class Subscriber {
       const subgroupHeader: SubgroupHeader = message.data.data;
       sub = this.getSubscriptionByTrackAlias(subgroupHeader.trackAlias);
       Mogger.info(`Subgroup stream with trackAlias:${subgroupHeader.trackAlias} received`);
+      if (sub.type === 'video') {
+        this.subgroupToGroup.set(subgroupHeader.subgroupId, subgroupHeader.groupId);
+        if (this.currentVideoGroupId === null || this.currentVideoGroupId !== subgroupHeader.groupId) {
+          this.videoWaitingForKeyFrame = true;
+        }
+      }
       break;
     case 'subgroupObject':
       const encodedChunkInit = message.data.data.encodedChunkInit as EncodedVideoChunkInit;
+      const subgroupId = message.data.data.subgroupId as number;
+      const groupId = this.subgroupToGroup.get(subgroupId);
       if (this.videoWaitingForKeyFrame && encodedChunkInit.type !== 'key') {
         Mogger.debug('Waiting for video key frame...');
         break;
       }
       this.videoWaitingForKeyFrame = false;
+      this.currentVideoGroupId = groupId ?? null;
       const videoTrackAlias: number = message.data.data.trackAlias;
       sub = this.subscription.find(s => s.subscribe.trackAlias === videoTrackAlias);
       const header = message.data.data.header as SubgroupObject;
@@ -157,6 +170,21 @@ export class Subscriber {
       });
       const chunk = new EncodedVideoChunk(encodedChunkInit);
       sub.decoder.postMessage({ type: 'decode', data: { encodedVideoChunk: chunk, config: videoDecoderConfig } });
+
+      // flush buffered datagrams for this group
+      if (groupId !== undefined && this.datagramBuffer.hasGroup(groupId)) {
+        const pending = this.datagramBuffer.popGroup(groupId);
+        for (const d of pending) {
+          let vConfig: VideoDecoderConfig | null = null;
+          d.header.extensionHeaders.map(h => {
+            if (h.id === LOC_EXTENSION_HEADER_TYPE.VIDEO_CONFIG) {
+              vConfig = deserializeVideoDecoderConfig(h.value as Uint8Array);
+            }
+          });
+          const vChunk = new EncodedVideoChunk(d.encodedChunkInit as EncodedVideoChunkInit);
+          sub.decoder.postMessage({ type: 'decode', data: { encodedVideoChunk: vChunk, config: vConfig } });
+        }
+      }
       break;
     case 'subgroupObjectStatus':
       this.communicator.postMessage({ type: 'closeStream', data: { subgroupId: message.data.data.subgroupId } });
@@ -168,19 +196,19 @@ export class Subscriber {
       
       if (sub.type === 'video') {
         Mogger.debug(`Datagram video object with groupId ${datagramObject.header.groupId} and objectId ${datagramObject.header.objectId} received`);
-        if (this.videoWaitingForKeyFrame && datagramObject.encodedChunkInit.type !== 'key') {
-          Mogger.debug('Waiting for video key frame...');
+        if (this.videoWaitingForKeyFrame) {
+          // buffer until key frame arrives
+          this.datagramBuffer.enqueue(datagramObject as BufferedDatagram);
           break;
         }
-        this.videoWaitingForKeyFrame = false;
-        
+
         let videoDecoderConfig = null;
         datagramObject.header.extensionHeaders.map(h => {
           if (h.id === LOC_EXTENSION_HEADER_TYPE.VIDEO_CONFIG) {
             videoDecoderConfig = deserializeVideoDecoderConfig(h.value as Uint8Array);
           }
         });
-        
+
         const videoChunk = new EncodedVideoChunk(datagramObject.encodedChunkInit as EncodedVideoChunkInit);
         sub.decoder.postMessage({ type: 'decode', data: { encodedVideoChunk: videoChunk, config: videoDecoderConfig } });
       } else {
