@@ -30,7 +30,7 @@ declare global {
     name: string;
     groups: Group[];
     groupOrderPublisherPreference: number = GROUP_ORDER.ASCENDING;
-    objectForwardingPrefereces: 'Subgroup' | 'Datagram';
+    objectForwardingPrefereces: 'Subgroup' | 'Datagram' | 'KeyFrameStream';
     largestGroupId?: number;
     largestObjectId?: number;
     isTrackEnded?: boolean;
@@ -50,6 +50,9 @@ declare global {
     capacity: number;
     writePos: number;
     readPos: number;
+    size: number;
+    available: number;
+    free: number;
   }
 }
 

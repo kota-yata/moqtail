@@ -115,7 +115,7 @@ class MoQTCommunicator {
     this.wt.close();
     Mogger.debug('Session closed');
   }
-  async readSubgroupObject(reader: ReadableStream, trackAlias: number, subgroupId: number) {
+  async readSubgroupObject(reader: ReadableStream, trackAlias: number, subgroupId: number, groupId: number) {
     try {
       let done = false;
       while (!done) {
@@ -123,7 +123,7 @@ class MoQTCommunicator {
         done = header.objectStatus && (header.objectStatus === OBJECT_STATUS.END_OF_GROUP || header.objectStatus === OBJECT_STATUS.END_OF_TRACK || header.objectStatus === OBJECT_STATUS.END_OF_TRACK_AND_GROUP);
         if (!done) {
           const encodedChunkInit = await deserializeEncodedChunk(reader);
-          postMessage({ type: 'subgroupObject', data: { header, encodedChunkInit, trackAlias, subgroupId } });
+          postMessage({ type: 'subgroupObject', data: { header, encodedChunkInit, trackAlias, subgroupId, groupId } });
         } else {
           postMessage({ type: 'subgroupObjectStatus', data: { header, subgroupId } });
         }
@@ -201,7 +201,7 @@ class MoQTCommunicator {
       case STREAM.SUBGROUP_HEADER:
         const subgroupHeader = await deserializeSubgroupHeader(readableStream);
         postMessage({ type: `stream-${streamType}`, data: subgroupHeader });
-        this.readSubgroupObject(readableStream, subgroupHeader.trackAlias, subgroupHeader.subgroupId);
+        this.readSubgroupObject(readableStream, subgroupHeader.trackAlias, subgroupHeader.subgroupId, subgroupHeader.groupId);
         break;
       }
       reader.releaseLock();

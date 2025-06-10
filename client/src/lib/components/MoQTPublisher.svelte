@@ -18,7 +18,7 @@
 
   let videoEncoderChoice = 'vp8';
 
-  let videoForwardingPreference: 'Subgroup' | 'Datagram' = 'Subgroup';
+  let videoForwardingPreference: 'Subgroup' | 'Datagram' | 'KeyFrameStream' = 'Subgroup';
 
   export let moqtServerUrl: string;
   let namespace = ['moqtail'];
@@ -140,6 +140,7 @@
       <select name="pub-track-video-forwarding" bind:value={videoForwardingPreference}>
         <option value="Subgroup">Stream (Subgroup)</option>
         <option value="Datagram">Datagram</option>
+        <option value="KeyFrameStream">Key Frame Stream</option>
       </select>
     </div>
     <div>
