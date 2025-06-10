@@ -1,5 +1,5 @@
 import { Mogger } from '$lib/utils/mogger';
-import { CONTROL_MESSAGE, DATAGRAM, deserializeAnnounceError, deserializeAnnounceOk, deserializeDatagramHeader, deserializeDatagramType, deserializeEncodedChunk, deserializeServerSetup, deserializeSubgroupHeader, deserializeSubgroupObjectHeader, deserializeSubscribe, deserializeSubscribeDone, deserializeSubscribeError, deserializeSubscribeOk, deserializeUnsubscribe, OBJECT_STATUS, readControlMessageType, STREAM } from 'moqtail';
+import { CONTROL_MESSAGE, DATAGRAM, deserializeAnnounceError, deserializeAnnounceOk, deserializeDatagramHeader, deserializeDatagramType, deserializeEncodedChunk, deserializeServerSetup, deserializeSubgroupHeader, deserializeSubgroupObjectHeader, deserializeSubscribe, deserializeSubscribeDone, deserializeSubscribeError, deserializeSubscribeOk, deserializeUnsubscribe, OBJECT_STATUS, readControlMessageType, STREAM, readUntilEof } from 'moqtail';
 
 export const COMMUNICATOR_STATE = {
   STOPPED: 0b0,
@@ -141,8 +141,8 @@ class MoQTCommunicator {
     const header = await deserializeDatagramHeader(reader);
     // done = type === DATAGRAM.OBJECT_DATAGRAM_STATUS;
     if (type === DATAGRAM.OBJECT_DATAGRAM) {
-      const encodedChunkInit = await deserializeEncodedChunk(reader);
-      postMessage({ type: 'datagramObject', data: { header, encodedChunkInit } });
+      const payload = await readUntilEof(reader, 1024);
+      postMessage({ type: 'datagramObject', data: { header, payload } }, [payload.buffer]);
     } else {
       postMessage({ type: 'datagramObjectStatus', data: { header } });
     }
