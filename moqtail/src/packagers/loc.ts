@@ -26,7 +26,8 @@ export const LOC_EXTENSION_HEADER_TYPE = {
   VIDEO_CONFIG: 15, // 16
   AUDIO_CONFIG: 17,
   VIDEO_FRAME_MARKING: 4,
-  AUDIO_LEVEL: 6
+  AUDIO_LEVEL: 6,
+  DATAGRAM_FRAGMENT_INFO: 31
 } as const;
 
 export const videoDecoderConfigToExtensionHeader = (config: VideoDecoderConfig): ExtensionHeader => {
@@ -126,3 +127,25 @@ export const deserializeCaptureTimestamp = (buff: Uint8Array): number => {
   const timestamp = deserializeQuicVarIntFromArray(buff, 0);
   return timestamp.value;
 }
+
+export const datagramFragmentInfoToExtensionHeader = (
+  fragmentIndex: number,
+  totalFragments: number
+): ExtensionHeader => {
+  const indexBytes = serializeQuicVarInt(fragmentIndex);
+  const totalBytes = serializeQuicVarInt(totalFragments);
+  const data = concatBuffer([indexBytes, totalBytes]);
+  return { id: LOC_EXTENSION_HEADER_TYPE.DATAGRAM_FRAGMENT_INFO, value: data };
+};
+
+export const deserializeDatagramFragmentInfo = (
+  buff: Uint8Array
+): { fragmentIndex: number; totalFragments: number } => {
+  let offset = 0;
+  let result = deserializeQuicVarIntFromArray(buff, offset);
+  const fragmentIndex = result.value;
+  offset += result.byteLength;
+  result = deserializeQuicVarIntFromArray(buff, offset);
+  const totalFragments = result.value;
+  return { fragmentIndex, totalFragments };
+};
