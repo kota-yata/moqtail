@@ -48,6 +48,7 @@ class MoQTCommunicator {
     this.datagramWriter = this.wt.datagrams.writable;
     this.datagramReader = this.wt.datagrams.readable.getReader();
     this.state = this.state | COMMUNICATOR_STATE.RUNNING;
+    postMessage({ type: 'datagramMaxSize', data: this.wt.datagrams.maxDatagramSize });
     Mogger.debug('Connection established');
   }
   async sendControlMessage(data: Uint8Array) {

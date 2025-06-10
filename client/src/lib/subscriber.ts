@@ -1,9 +1,19 @@
 import { Mogger } from './utils/mogger';
-import { CONTROL_MESSAGE, deserializeVideoDecoderConfig, LOC_EXTENSION_HEADER_TYPE, MOQT_DRAFT08_VERSION, MOQT_DRAFT09_VERSION, MOQT_DRAFT10_VERSION, serializeClientSetup, serializeSubscribe, STREAM, deserializeAudioDecoderConfig, serializeUnsubscribe, OBJECT_STATUS } from 'moqtail';
+import { CONTROL_MESSAGE, deserializeVideoDecoderConfig, LOC_EXTENSION_HEADER_TYPE, MOQT_DRAFT08_VERSION, MOQT_DRAFT09_VERSION, MOQT_DRAFT10_VERSION, serializeClientSetup, serializeSubscribe, STREAM, deserializeAudioDecoderConfig, serializeUnsubscribe, OBJECT_STATUS, deserializeDatagramFragmentInfo } from 'moqtail';
 import type { Subscribe, ServerSetup, SubscribeOk, SubgroupHeader, SubgroupObject, SubscribeError, Datagram } from 'moqtail';
 import { moqVideoTransmissionLatencyStore, ringStats } from './utils/store';
 
 import { DatagramBuffer, BufferedDatagram } from "./utils/datagramBuffer";
+const concatUint8Array = (arr: Uint8Array[]) => {
+  const total = arr.reduce((acc, v) => acc + v.byteLength, 0);
+  const ret = new Uint8Array(total);
+  let offset = 0;
+  for (const a of arr) {
+    ret.set(a, offset);
+    offset += a.byteLength;
+  }
+  return ret;
+};
 // @ts-ignore
 import CommunicatorWorker from './threads/communicator.worker?worker';
 // @ts-ignore
@@ -24,6 +34,7 @@ export class Subscriber {
   private currentVideoGroupId: number | null = null;
   private subgroupToGroup: Map<number, number> = new Map();
   private datagramBuffer = new DatagramBuffer();
+  private datagramFragments: Map<string, { total: number; payloads: Uint8Array[]; header: Datagram; encodedChunkInit: EncodedAudioChunkInit | EncodedVideoChunkInit }> = new Map();
   private videoTimestampOffset: number | null = null;
   private audioNode: AudioWorkletNode;
   private communicator: Worker;
@@ -187,8 +198,33 @@ export class Subscriber {
       break;
     case 'datagramObject':
       const datagramObject = message.data.data as { header: Datagram, encodedChunkInit: EncodedAudioChunkInit | EncodedVideoChunkInit };
-      
+
       sub = this.getSubscriptionByTrackAlias(datagramObject.header.trackAlias);
+
+      const fragIndex = datagramObject.header.extensionHeaders.findIndex(h => h.id === LOC_EXTENSION_HEADER_TYPE.DATAGRAM_FRAGMENT_INFO);
+      if (fragIndex !== -1) {
+        const info = deserializeDatagramFragmentInfo(datagramObject.header.extensionHeaders[fragIndex].value as Uint8Array);
+        datagramObject.header.extensionHeaders.splice(fragIndex, 1);
+        const key = `${datagramObject.header.trackAlias}-${datagramObject.header.groupId}-${datagramObject.header.objectId}`;
+        let entry = this.datagramFragments.get(key);
+        if (!entry) {
+          entry = { total: info.totalFragments, payloads: new Array(info.totalFragments), header: datagramObject.header, encodedChunkInit: datagramObject.encodedChunkInit };
+          this.datagramFragments.set(key, entry);
+        }
+        entry.payloads[info.fragmentIndex] = datagramObject.encodedChunkInit.data as Uint8Array;
+        if (entry.payloads.filter(p => p).length === entry.total) {
+          const payload = concatUint8Array(entry.payloads as Uint8Array[]);
+          const combined: BufferedDatagram = {
+            header: entry.header,
+            encodedChunkInit: { ...entry.encodedChunkInit, data: payload }
+          };
+          this.datagramFragments.delete(key);
+          datagramObject.header = combined.header;
+          datagramObject.encodedChunkInit = combined.encodedChunkInit;
+        } else {
+          break;
+        }
+      }
       
       if (sub.type === 'video') {
         Mogger.debug(`Datagram video object with groupId ${datagramObject.header.groupId} and objectId ${datagramObject.header.objectId} received`);
