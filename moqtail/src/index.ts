@@ -36,3 +36,4 @@ export * from './dataStreams/subgroupObject';
 export * from './packagers/loc';
 
 export * from './packagers/mi/miExtensionHeaders';
+export * from './utils/stream';
