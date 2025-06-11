@@ -219,7 +219,6 @@ export class Publisher {
         extensionHeaders,
         payload: videoChunkBytes,
       };
-      Mogger.debug(`Sending datagram object for track ${targetTrack.name} with groupId ${targetTrack.largestGroupId} and objectId ${targetTrack.largestObjectId}`);
       Mogger.debug(`Datagram payload size: ${videoChunkBytes.byteLength} bytes`);
       this.sendDatagramWithFragmentation(datagram);
     }

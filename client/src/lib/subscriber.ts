@@ -215,20 +215,20 @@ export class Subscriber {
         if (entry.payloads.filter(p => p).length === entry.total) {
           const payload = concatUint8Array(entry.payloads as Uint8Array[]);
           const encodedChunkInit = deserializeEncodedChunkFromArray(payload);
+          Mogger.debug(`Datagram object id ${datagramObject.header.objectId} received with all fragments`);
           const combined: BufferedDatagram = { header: entry.header, encodedChunkInit };
           this.datagramFragments.delete(key);
           datagramObject.header = combined.header;
-          (datagramObject as any).encodedChunkInit = encodedChunkInit;
+          datagramObject.encodedChunkInit = encodedChunkInit;
         } else {
           break;
         }
       } else {
-        (datagramObject as any).encodedChunkInit = deserializeEncodedChunkFromArray(datagramObject.payload);
+        datagramObject.encodedChunkInit = deserializeEncodedChunkFromArray(datagramObject.payload);
       }
       
       if (sub.type === 'video') {
-        Mogger.debug(`Datagram video object with groupId ${datagramObject.header.groupId} and objectId ${datagramObject.header.objectId} received`);
-        const buffered: BufferedDatagram = { header: datagramObject.header, encodedChunkInit: (datagramObject as any).encodedChunkInit };
+        const buffered: BufferedDatagram = { header: datagramObject.header, encodedChunkInit: datagramObject.encodedChunkInit };
         this.datagramBuffer.enqueue(buffered);
 
         if (!this.videoWaitingForKeyFrame) {
