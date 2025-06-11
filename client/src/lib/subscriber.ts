@@ -4,6 +4,8 @@ import type { Subscribe, ServerSetup, SubscribeOk, SubgroupHeader, SubgroupObjec
 import { moqVideoTransmissionLatencyStore, ringStats } from './utils/store';
 
 import { DatagramBuffer, BufferedDatagram } from "./utils/datagramBuffer";
+
+// TODO: remove this
 const concatUint8Array = (arr: Uint8Array[]) => {
   const total = arr.reduce((acc, v) => acc + v.byteLength, 0);
   const ret = new Uint8Array(total);
@@ -14,6 +16,7 @@ const concatUint8Array = (arr: Uint8Array[]) => {
   }
   return ret;
 };
+
 // @ts-ignore
 import CommunicatorWorker from './threads/communicator.worker?worker';
 // @ts-ignore
