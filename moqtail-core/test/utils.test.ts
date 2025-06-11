@@ -22,7 +22,7 @@ describe('utils', () => {
   test('serializeParams and deserializeParams round trip', async () => {
     const params: Parameter[] = [
       { type: PARAMETER.SETUP.PATH.KEY, value: 'path' },
-      { type: PARAMETER.SETUP.MAX_SUBSCRIBE_ID.KEY, value: 10 }
+      { type: PARAMETER.SETUP.MAX_REQUEST_ID.KEY, value: 10 }
     ];
     const serialized = serializeParams(params);
     const stream = streamFromArray(serialized.slice(serializeParams([]).byteLength));

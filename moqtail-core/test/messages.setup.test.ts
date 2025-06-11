@@ -1,8 +1,8 @@
 import { serializeClientSetup, deserializeClientSetup } from '../src/messages/clientSetup';
 import { serializeServerSetup, deserializeServerSetup } from '../src/messages/serverSetup';
 import { serializeGoaway, deserializeGoaway } from '../src/messages/goaway';
-import { serializeMaxSubscribeId, deserializeMaxSubscribeId } from '../src/messages/maxSubscribeId';
-import { serializeSubscribesBlocked, deserializeSubscribesBlocked } from '../src/messages/subscribesBlocked';
+import { serializeMaxRequestId, deserializeMaxRequestId } from '../src/messages/maxRequestId';
+import { serializeRequestsBlocked, deserializeRequestsBlocked } from '../src/messages/requestsBlocked';
 import { MOQT_DRAFT09_VERSION, CONTROL_MESSAGE } from '../src/constants';
 import { serializeQuicVarInt } from 'bytes';
 
@@ -25,13 +25,13 @@ describe('control messages setup', () => {
     expect(bytes.byteLength).toBeGreaterThan(0);
   });
 
-  test('serializeMaxSubscribeId', () => {
-    const bytes = serializeMaxSubscribeId({ subscribeId: 1 });
+  test('serializeMaxRequestId', () => {
+    const bytes = serializeMaxRequestId({ requestId: 1 });
     expect(bytes.byteLength).toBeGreaterThan(0);
   });
 
-  test('serializeSubscribesBlocked', () => {
-    const bytes = serializeSubscribesBlocked({ maxSubscribeId: 1 });
+  test('serializeRequestsBlocked', () => {
+    const bytes = serializeRequestsBlocked({ maxRequestId: 1 });
     expect(bytes.byteLength).toBeGreaterThan(0);
   });
 
@@ -56,17 +56,17 @@ describe('control messages setup', () => {
     await expect(deserializeGoaway(stream)).resolves.toEqual({ newSessionUri: 'uri' });
   });
 
-  test('deserializeMaxSubscribeId', async () => {
-    const bytes = serializeMaxSubscribeId({ subscribeId: 1 });
-    const off = serializeQuicVarInt(CONTROL_MESSAGE.MAX_SUBSCRIBE_ID).byteLength;
+  test('deserializeMaxRequestId', async () => {
+    const bytes = serializeMaxRequestId({ requestId: 1 });
+    const off = serializeQuicVarInt(CONTROL_MESSAGE.MAX_REQUEST_ID).byteLength;
     const stream = streamFromArray(bytes.slice(off));
-    await expect(deserializeMaxSubscribeId(stream)).resolves.toEqual({ subscribeId: 1 });
+    await expect(deserializeMaxRequestId(stream)).resolves.toEqual({ requestId: 1 });
   });
 
-  test('deserializeSubscribesBlocked', async () => {
-    const bytes = serializeSubscribesBlocked({ maxSubscribeId: 1 });
-    const off = serializeQuicVarInt(CONTROL_MESSAGE.SUBSCRIBES_BLOCKED).byteLength;
+  test('deserializeRequestsBlocked', async () => {
+    const bytes = serializeRequestsBlocked({ maxRequestId: 1 });
+    const off = serializeQuicVarInt(CONTROL_MESSAGE.REQUESTS_BLOCKED).byteLength;
     const stream = streamFromArray(bytes.slice(off));
-    await expect(deserializeSubscribesBlocked(stream)).resolves.toEqual({ maxSubscribeId: 1 });
+    await expect(deserializeRequestsBlocked(stream)).resolves.toEqual({ maxRequestId: 1 });
   });
 });
