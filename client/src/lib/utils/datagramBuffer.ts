@@ -6,7 +6,7 @@ export interface BufferedDatagram {
 
 export class DatagramBuffer {
   private buffer: Map<number, BufferedDatagram[]> = new Map();
-  private readyGroups: Set<number> = new Set();
+  private readyGroups: number[] = [];
   private timestampOffsetMs: number | null = null;
 
   setTimestampOffset(offsetMs: number) {
@@ -16,13 +16,15 @@ export class DatagramBuffer {
   enqueue(datagram: BufferedDatagram) {
     const group = this.buffer.get(datagram.header.groupId) || [];
     group.push(datagram);
-    group.sort((a, b) => (a.encodedChunkInit.timestamp ?? 0) - (b.encodedChunkInit.timestamp ?? 0));
+    // Maintain decoding order by objectId
+    group.sort((a, b) => (a.header.objectId ?? 0) - (b.header.objectId ?? 0));
     this.buffer.set(datagram.header.groupId, group);
   }
 
   releaseGroup(groupId: number) {
-    if (this.buffer.has(groupId)) {
-      this.readyGroups.add(groupId);
+    if (!this.buffer.has(groupId)) return;
+    if (!this.readyGroups.includes(groupId)) {
+      this.readyGroups.push(groupId);
     }
   }
 
@@ -30,10 +32,12 @@ export class DatagramBuffer {
     const out: BufferedDatagram[] = [];
     if (this.timestampOffsetMs === null) return out;
 
-    for (const groupId of Array.from(this.readyGroups)) {
+    for (let gi = 0; gi < this.readyGroups.length; gi++) {
+      const groupId = this.readyGroups[gi];
       const group = this.buffer.get(groupId);
       if (!group || group.length === 0) {
-        this.readyGroups.delete(groupId);
+        this.readyGroups.splice(gi, 1);
+        gi--; // adjust index after removal
         this.buffer.delete(groupId);
         continue;
       }
@@ -50,7 +54,8 @@ export class DatagramBuffer {
       }
 
       if (group.length === 0) {
-        this.readyGroups.delete(groupId);
+        this.readyGroups.splice(gi, 1);
+        gi--;
         this.buffer.delete(groupId);
       } else {
         this.buffer.set(groupId, group);
@@ -66,7 +71,7 @@ export class DatagramBuffer {
 
   clear() {
     this.buffer.clear();
-    this.readyGroups.clear();
+    this.readyGroups = [];
     this.timestampOffsetMs = null;
   }
 }
