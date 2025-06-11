@@ -4,6 +4,7 @@ import type { Subscribe, ServerSetup, SubscribeOk, SubgroupHeader, SubgroupObjec
 import { moqVideoTransmissionLatencyStore, ringStats } from './utils/store';
 
 import { DatagramBuffer, BufferedDatagram } from "./utils/datagramBuffer";
+import { JitterBuffer } from "./utils/jitterBuffer";
 import { concatUint8Arrays } from "bytes";
 
 // @ts-ignore
@@ -26,6 +27,7 @@ export class Subscriber {
   private currentVideoGroupId: number | null = null;
   private subgroupToGroup: Map<number, number> = new Map();
   private datagramBuffer = new DatagramBuffer();
+  private jitterBuffer: JitterBuffer;
   private datagramFragments: Map<string, { total: number; payloads: Uint8Array[]; header: Datagram }> = new Map();
   private videoTimestampOffset: number | null = null;
   private audioNode: AudioWorkletNode;
@@ -35,6 +37,7 @@ export class Subscriber {
     this.communicator = new CommunicatorWorker();
     this.communicator.onmessage = this.communicatorMessageHandler.bind(this);
     this.communicator.postMessage({ type: 'startConnection', data: props.serverUrl });
+    this.jitterBuffer = new JitterBuffer(props.jitterBufferFrameSize ?? 200);
   }
   setup() {
     this.communicator.postMessage({ type: 'startReadLoop', data: null });
@@ -101,6 +104,7 @@ export class Subscriber {
   communicatorMessageHandler(message: MessageEvent) {
     let msg;
     let sub: RegisteredSubscription;
+    this.processJitterBuffer();
     switch (message.data.type) {
     case `ctrl-${CONTROL_MESSAGE.SERVER_SETUP}`:
       msg = message.data.data as ServerSetup;
@@ -177,7 +181,8 @@ export class Subscriber {
         }
       });
       const chunk = new EncodedVideoChunk(encodedChunkInit);
-      sub.decoder.postMessage({ type: 'decode', data: { encodedVideoChunk: chunk, config: videoDecoderConfig } });
+      this.jitterBuffer.enqueue({ decoder: sub.decoder, type: 'video', chunk, config: videoDecoderConfig });
+      this.processJitterBuffer();
 
       if (groupId !== undefined) {
         this.datagramBuffer.releaseGroup(groupId);
@@ -245,7 +250,8 @@ export class Subscriber {
         });
         
         const audioChunk = new EncodedAudioChunk(datagramObject.encodedChunkInit as EncodedAudioChunkInit);
-        sub.decoder.postMessage({ type: 'decode', data: { encodedAudioChunk: audioChunk, config: audioDecoderConfig } });
+        this.jitterBuffer.enqueue({ decoder: sub.decoder, type: 'audio', chunk: audioChunk, config: audioDecoderConfig });
+        this.processJitterBuffer();
       }
       break;
     case 'error':
@@ -283,6 +289,17 @@ export class Subscriber {
     }
   }
 
+  private processJitterBuffer() {
+    const ready = this.jitterBuffer.dequeueReady(performance.now());
+    for (const item of ready) {
+      if (item.type === 'video') {
+        item.decoder.postMessage({ type: 'decode', data: { encodedVideoChunk: item.chunk as EncodedVideoChunk, config: item.config } });
+      } else {
+        item.decoder.postMessage({ type: 'decode', data: { encodedAudioChunk: item.chunk as EncodedAudioChunk, config: item.config } });
+      }
+    }
+  }
+
   private decodeDatagramQueue(queue: BufferedDatagram[], sub: RegisteredSubscription) {
     for (const d of queue) {
       let vConfig: VideoDecoderConfig | null = null;
@@ -292,7 +309,8 @@ export class Subscriber {
         }
       });
       const vChunk = new EncodedVideoChunk(d.encodedChunkInit as EncodedVideoChunkInit);
-      sub.decoder.postMessage({ type: 'decode', data: { encodedVideoChunk: vChunk, config: vConfig } });
+      this.jitterBuffer.enqueue({ decoder: sub.decoder, type: 'video', chunk: vChunk, config: vConfig });
     }
+    this.processJitterBuffer();
   }
 }
