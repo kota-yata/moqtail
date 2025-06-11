@@ -34,7 +34,7 @@ export class Subscriber {
   private currentVideoGroupId: number | null = null;
   private subgroupToGroup: Map<number, number> = new Map();
   private datagramBuffer = new DatagramBuffer();
-  private datagramFragments: Map<string, { total: number; payloads: Uint8Array[]; header: Datagram; encodedChunkInit: EncodedAudioChunkInit | EncodedVideoChunkInit }> = new Map();
+  private datagramFragments: Map<string, { total: number; payloads: Uint8Array[]; header: Datagram }> = new Map();
   private videoTimestampOffset: number | null = null;
   private audioNode: AudioWorkletNode;
   private communicator: Worker;
@@ -197,7 +197,7 @@ export class Subscriber {
       this.communicator.postMessage({ type: 'closeStream', data: { subgroupId: message.data.data.subgroupId } });
       break;
     case 'datagramObject':
-      const datagramObject = message.data.data as { header: Datagram, encodedChunkInit: EncodedAudioChunkInit | EncodedVideoChunkInit };
+      const datagramObject = message.data.data as { header: Datagram, payload: Uint8Array };
 
       sub = this.getSubscriptionByTrackAlias(datagramObject.header.trackAlias);
 
@@ -208,27 +208,28 @@ export class Subscriber {
         const key = `${datagramObject.header.trackAlias}-${datagramObject.header.groupId}-${datagramObject.header.objectId}`;
         let entry = this.datagramFragments.get(key);
         if (!entry) {
-          entry = { total: info.totalFragments, payloads: new Array(info.totalFragments), header: datagramObject.header, encodedChunkInit: datagramObject.encodedChunkInit };
+          entry = { total: info.totalFragments, payloads: new Array(info.totalFragments), header: datagramObject.header };
           this.datagramFragments.set(key, entry);
         }
-        entry.payloads[info.fragmentIndex] = datagramObject.encodedChunkInit.data as Uint8Array;
+        entry.payloads[info.fragmentIndex] = datagramObject.payload;
         if (entry.payloads.filter(p => p).length === entry.total) {
           const payload = concatUint8Array(entry.payloads as Uint8Array[]);
-          const combined: BufferedDatagram = {
-            header: entry.header,
-            encodedChunkInit: { ...entry.encodedChunkInit, data: payload }
-          };
+          const encodedChunkInit = deserializeEncodedChunkFromArray(payload);
+          const combined: BufferedDatagram = { header: entry.header, encodedChunkInit };
           this.datagramFragments.delete(key);
           datagramObject.header = combined.header;
-          datagramObject.encodedChunkInit = combined.encodedChunkInit;
+          (datagramObject as any).encodedChunkInit = encodedChunkInit;
         } else {
           break;
         }
+      } else {
+        (datagramObject as any).encodedChunkInit = deserializeEncodedChunkFromArray(datagramObject.payload);
       }
       
       if (sub.type === 'video') {
         Mogger.debug(`Datagram video object with groupId ${datagramObject.header.groupId} and objectId ${datagramObject.header.objectId} received`);
-        this.datagramBuffer.enqueue(datagramObject as BufferedDatagram);
+        const buffered: BufferedDatagram = { header: datagramObject.header, encodedChunkInit: (datagramObject as any).encodedChunkInit };
+        this.datagramBuffer.enqueue(buffered);
 
         if (!this.videoWaitingForKeyFrame) {
           this.datagramBuffer.releaseGroup(datagramObject.header.groupId);

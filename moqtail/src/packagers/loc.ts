@@ -1,6 +1,6 @@
 // serializer/deserializer for Low Overhead Container (https://datatracker.ietf.org/doc/draft-mzanaty-moq-loc/)
 import type { ExtensionHeader } from "../dataStreams/extensionHeader";
-import { buffRead, concatBuffer, serializeQuicVarInt, stringToVarBytes, varBytesToString, deserializeQuicVarInt, varBytesToStringFromArray, deserializeQuicVarIntFromArray } from "../utils/bytes"
+import { buffRead, buffReadFromArray, concatBuffer, serializeQuicVarInt, stringToVarBytes, varBytesToString, deserializeQuicVarInt, varBytesToStringFromArray, deserializeQuicVarIntFromArray } from "../utils/bytes"
 
 export const serializeEncodedChunk = (obj: EncodedVideoChunk | EncodedAudioChunk): Uint8Array => {
   const typeBytes = stringToVarBytes(obj.type);
@@ -20,6 +20,26 @@ export const deserializeEncodedChunk = async (reader: ReadableStream): Promise<E
   const data = await buffRead(reader, byteLength);
   return { type, timestamp, duration, data };
 }
+
+export const deserializeEncodedChunkFromArray = (
+  data: Uint8Array
+): EncodedVideoChunkInit | EncodedAudioChunkInit => {
+  let offset = 0;
+  let result: { value: any; byteLength: number } = varBytesToStringFromArray(data, offset);
+  const type = result.value as 'delta' | 'key';
+  offset += result.byteLength;
+  result = deserializeQuicVarIntFromArray(data, offset);
+  const timestamp = result.value;
+  offset += result.byteLength;
+  result = deserializeQuicVarIntFromArray(data, offset);
+  const duration = result.value;
+  offset += result.byteLength;
+  result = deserializeQuicVarIntFromArray(data, offset);
+  const byteLength = result.value;
+  offset += result.byteLength;
+  const payload = buffReadFromArray(data, byteLength, offset);
+  return { type, timestamp, duration, data: payload };
+};
 
 export const LOC_EXTENSION_HEADER_TYPE = {
   CAPTURE_TIMESTAMP: 2,
