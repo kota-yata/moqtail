@@ -1,6 +1,6 @@
 import { CONTROL_MESSAGE, GROUP_ORDER, SUBSCRIBE_FILTER } from "../constants";
 import { deserializeParams, type Parameter, serializeParams } from "../utils/parameter";
-import { concatBuffer, serializeQuicVarInt, stringToVarBytes, deserializeQuicVarInt, varBytesToString, setUint8, getUint8 } from "../utils/bytes";
+import { concatUint8Arrays, serializeQuicVarInt, stringToVarBytes, deserializeQuicVarInt, varBytesToString, setUint8, getUint8 } from "bytes";
 import { deserializeNamespace } from "../utils/namespace";
 
 export const serializeSubscribe = (props: Subscribe) => {
@@ -17,9 +17,9 @@ export const serializeSubscribe = (props: Subscribe) => {
   const startObjectBytes = props.startObject !== undefined ? serializeQuicVarInt(props.startObject) : new Uint8Array();
   const endGroupBytes = props.endGroup !== undefined ? serializeQuicVarInt(props.endGroup) : new Uint8Array();
   const parametersBytes = serializeParams(props.parameters || []);
-  const body = concatBuffer([subscribeIdBytes, trackAliasBytes, namespaceLength, ...namespaceBytes, trackNameBytes, subscriberPriorityBytes, groupOrderBytes, filterTypeBytes, startGroupBytes, startObjectBytes, endGroupBytes, parametersBytes]);
+  const body = concatUint8Arrays([subscribeIdBytes, trackAliasBytes, namespaceLength, ...namespaceBytes, trackNameBytes, subscriberPriorityBytes, groupOrderBytes, filterTypeBytes, startGroupBytes, startObjectBytes, endGroupBytes, parametersBytes]);
   const length = serializeQuicVarInt(body.byteLength);
-  return concatBuffer([messageType, length, body]);
+  return concatUint8Arrays([messageType, length, body]);
 }
 
 export const deserializeSubscribe = async (controlReader: ReadableStream): Promise<Subscribe> => {

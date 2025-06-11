@@ -1,4 +1,4 @@
-import { concatBuffer, serializeQuicVarInt, stringToVarBytes } from '../utils/bytes';
+import { concatUint8Arrays, serializeQuicVarInt, stringToVarBytes } from 'bytes';
 import {
   deserializeVideoDecoderConfig,
   videoDecoderConfigToExtensionHeader,
@@ -43,7 +43,7 @@ describe('deserializeVideoDecoderConfig', () => {
     // Serialize minimal config (only codec provided)
     const codecBytes = stringToVarBytes(minimalConfig.codec);
 
-    const serializedBuffer = concatBuffer([
+    const serializedBuffer = concatUint8Arrays([
       codecBytes,
       serializeQuicVarInt(0), // codedWidth missing
       serializeQuicVarInt(0), // codedHeight missing

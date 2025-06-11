@@ -1,5 +1,5 @@
 import type { ExtensionHeader } from "../../dataStreams/extensionHeader";
-import { buffRead, concatBuffer, serializeQuicVarInt, deserializeQuicVarInt } from "../../utils/bytes";
+import { buffRead, concatUint8Arrays, serializeQuicVarInt, deserializeQuicVarInt } from "bytes";
 import { MI_EXTENSION_HEADER_TYPE } from "./miExtensionHeaders";
 
 export type H264AVCCMetadata = {
@@ -18,7 +18,7 @@ export const H264AVCCMetadataToExtensionHeader = (props: H264AVCCMetadata): Exte
   const timebaseBytes = serializeQuicVarInt(props.timebase);
   const durationBytes = serializeQuicVarInt(props.duration);
   const wallclockBytes = serializeQuicVarInt(props.wallclock);
-  const data = concatBuffer([seqIdBytes, ptsBytes, dtsBytes, timebaseBytes, durationBytes, wallclockBytes]);
+  const data = concatUint8Arrays([seqIdBytes, ptsBytes, dtsBytes, timebaseBytes, durationBytes, wallclockBytes]);
   return { id: MI_EXTENSION_HEADER_TYPE.H264AVCC_METADATA, value: data };
 }
 
@@ -62,9 +62,9 @@ export const H264AVCCExtraDataToExtensionHeader = (props: ArrayBuffer): Extensio
 //   const profileCompatibility = serializeQuicVarInt(props.extraData.profileCompatibility);
 //   const AVCLevelIndication = serializeQuicVarInt(props.extraData.AVCLevelIndication);
 //   const lengthSizeMinusOne = serializeQuicVarInt(props.extraData.lengthSizeMinusOne);
-//   const sequenceParameterSets = props.extraData.sequenceParameterSets.map(sps => concatBuffer([serializeQuicVarInt(sps.sequenceParameterSetLength), sps.sequenceParameterSetNALUnit]));
-//   const pictureParameterSets = props.extraData.pictureParameterSets.map(pps => concatBuffer([serializeQuicVarInt(pps.pictureParameterSetLength), pps.pictureParameterSetNALUnit]));
-//   return concatBuffer([configurationVersion, AVCProfileIndication, profileCompatibility, AVCLevelIndication, lengthSizeMinusOne, ...sequenceParameterSets, ...pictureParameterSets]);
+//   const sequenceParameterSets = props.extraData.sequenceParameterSets.map(sps => concatUint8Arrays([serializeQuicVarInt(sps.sequenceParameterSetLength), sps.sequenceParameterSetNALUnit]));
+//   const pictureParameterSets = props.extraData.pictureParameterSets.map(pps => concatUint8Arrays([serializeQuicVarInt(pps.pictureParameterSetLength), pps.pictureParameterSetNALUnit]));
+//   return concatUint8Arrays([configurationVersion, AVCProfileIndication, profileCompatibility, AVCLevelIndication, lengthSizeMinusOne, ...sequenceParameterSets, ...pictureParameterSets]);
 // }
 
 // export const deserializeH264AVCCExtraData = async (controlReader: ReadableStream): Promise<H264AVCCExtraData> => {

@@ -1,6 +1,6 @@
 // serializer/deserializer for Low Overhead Container (https://datatracker.ietf.org/doc/draft-mzanaty-moq-loc/)
 import type { ExtensionHeader } from "../dataStreams/extensionHeader";
-import { buffRead, buffReadFromArray, concatBuffer, serializeQuicVarInt, stringToVarBytes, varBytesToString, deserializeQuicVarInt, varBytesToStringFromArray, deserializeQuicVarIntFromArray } from "../utils/bytes"
+import { buffRead, buffReadFromArray, concatUint8Arrays, serializeQuicVarInt, stringToVarBytes, varBytesToString, deserializeQuicVarInt, varBytesToStringFromArray, deserializeQuicVarIntFromArray } from "bytes"
 
 export const serializeEncodedChunk = (obj: EncodedVideoChunk | EncodedAudioChunk): Uint8Array => {
   const typeBytes = stringToVarBytes(obj.type);
@@ -9,7 +9,7 @@ export const serializeEncodedChunk = (obj: EncodedVideoChunk | EncodedAudioChunk
   const byteLengthBytes = serializeQuicVarInt(obj.byteLength);
   const payload = new Uint8Array(obj.byteLength);
   obj.copyTo(payload);
-  return concatBuffer([typeBytes, timestampBytes, durationBytes, byteLengthBytes, payload]);
+  return concatUint8Arrays([typeBytes, timestampBytes, durationBytes, byteLengthBytes, payload]);
 }
 
 export const deserializeEncodedChunk = async (reader: ReadableStream): Promise<EncodedVideoChunkInit | EncodedAudioChunkInit> => {
@@ -62,7 +62,7 @@ export const videoDecoderConfigToExtensionHeader = (config: VideoDecoderConfig):
   const desc = config.description as ArrayBuffer;
   const codecDescBytes = desc ? new Uint8Array(desc) : new Uint8Array(0);
   const codecDescLengthBytes = serializeQuicVarInt(codecDescBytes.byteLength);
-  const data = concatBuffer([codecBytes, widthBytes, heightBytes, displayAspectWidthBytes, displayAspectHeightBytes, colorSpaceBytes, hardwareAccelerationBytes, codecDescLengthBytes, codecDescBytes]);
+  const data = concatUint8Arrays([codecBytes, widthBytes, heightBytes, displayAspectWidthBytes, displayAspectHeightBytes, colorSpaceBytes, hardwareAccelerationBytes, codecDescLengthBytes, codecDescBytes]);
   return { id: LOC_EXTENSION_HEADER_TYPE.VIDEO_CONFIG, value: data };
 }
 
@@ -127,7 +127,7 @@ export const audioDecoderConfigToExtensionHeader = (config: AudioDecoderConfig):
   const codecBytes = stringToVarBytes(config.codec);
   const sampleRateBytes = serializeQuicVarInt(config.sampleRate);
   const channelCountBytes = serializeQuicVarInt(config.numberOfChannels);
-  const data = concatBuffer([codecBytes, sampleRateBytes, channelCountBytes]);
+  const data = concatUint8Arrays([codecBytes, sampleRateBytes, channelCountBytes]);
   return { id: LOC_EXTENSION_HEADER_TYPE.AUDIO_CONFIG, value: data };
 }
 
@@ -154,7 +154,7 @@ export const datagramFragmentInfoToExtensionHeader = (
 ): ExtensionHeader => {
   const indexBytes = serializeQuicVarInt(fragmentIndex);
   const totalBytes = serializeQuicVarInt(totalFragments);
-  const data = concatBuffer([indexBytes, totalBytes]);
+  const data = concatUint8Arrays([indexBytes, totalBytes]);
   return { id: LOC_EXTENSION_HEADER_TYPE.DATAGRAM_FRAGMENT_INFO, value: data };
 };
 

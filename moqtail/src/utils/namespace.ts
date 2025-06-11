@@ -1,4 +1,4 @@
-import { varBytesToString, deserializeQuicVarInt } from "./bytes";
+import { varBytesToString, deserializeQuicVarInt } from 'bytes';
 
 export const deserializeNamespace = async (stream: ReadableStream): Promise<string[]> => {
   const namespaceLength = await deserializeQuicVarInt(stream);

@@ -185,7 +185,7 @@ const setUint64 = (v: bigint) => {
 };
 
 
-export const concatBuffer = (arr: Uint8Array[]) => {
+export const concatUint8Arrays = (arr: Uint8Array[]) => {
   let totalLength = 0;
   arr.forEach(element => {
     if (element !== undefined) {
@@ -202,6 +202,8 @@ export const concatBuffer = (arr: Uint8Array[]) => {
   });
   return retBuffer;
 };
+
+export const concatBuffer = concatUint8Arrays;
 
 export const buffRead = async (readableStream: ReadableStream, size: number): Promise<Uint8Array> => {
   const ret = null;
@@ -266,7 +268,7 @@ export const readUntilEof = async (readableStream, blockSize) => {
 export const stringToVarBytes = (str: string) => {
   const dataStrBytes = new TextEncoder().encode(str);
   const dataStrLengthBytes = serializeQuicVarInt(dataStrBytes.byteLength);
-  return concatBuffer([dataStrLengthBytes, dataStrBytes]);
+  return concatUint8Arrays([dataStrLengthBytes, dataStrBytes]);
 };
 
 export const varBytesToString = async (receiveStream: ReadableStream) => {

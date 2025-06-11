@@ -1,4 +1,4 @@
-import { deserializeQuicVarInt, serializeQuicVarInt } from "../../utils/bytes";
+import { deserializeQuicVarInt, serializeQuicVarInt } from "bytes";
 
 export type utf8Header = {
   seqId: number

@@ -1,4 +1,4 @@
-import { serializeQuicVarInt, concatBuffer, deserializeQuicVarInt, stringToVarBytes, varBytesToString, setUint8, getUint8 } from '../utils/bytes';
+import { serializeQuicVarInt, concatUint8Arrays, deserializeQuicVarInt, stringToVarBytes, varBytesToString, setUint8, getUint8 } from 'bytes';
 import { CONTROL_MESSAGE, FETCH_TYPE } from '../constants';
 import { deserializeParams, type Parameter, serializeParams } from '../utils/parameter';
 import { deserializeNamespace } from '../utils/namespace';
@@ -23,7 +23,7 @@ export const serializeFetch = (props: { subscribeId: number, subscriberPriority:
     const endGroupBytes = serializeQuicVarInt(props.endGroup!);
     const endObjectBytes = serializeQuicVarInt(props.endObject!);
     const parametersBytes = serializeParams(props.parameters || []);
-    body = concatBuffer([subscribeIdBytes, subscriberPriorityBytes, groupOrderBytes, fetchTypeBytes, trackNamespaceLength, ...trackNamespaceBytes, trackNameBytes, startGroupBytes, startObjectBytes, endGroupBytes, endObjectBytes, parametersBytes]);
+    body = concatUint8Arrays([subscribeIdBytes, subscriberPriorityBytes, groupOrderBytes, fetchTypeBytes, trackNamespaceLength, ...trackNamespaceBytes, trackNameBytes, startGroupBytes, startObjectBytes, endGroupBytes, endObjectBytes, parametersBytes]);
   } else {
     if (!props.joiningSubscribeId || !props.precedingGroupOffset) {
       throw new Error('Invalid Fetch props for Joining');
@@ -31,11 +31,11 @@ export const serializeFetch = (props: { subscribeId: number, subscriberPriority:
     const joiningSubscribeIdBytes = serializeQuicVarInt(props.joiningSubscribeId!);
     const precedingGroupOffsetBytes = serializeQuicVarInt(props.precedingGroupOffset!);
     const parametersBytes = serializeParams(props.parameters || []);
-    body = concatBuffer([subscribeIdBytes, subscriberPriorityBytes, groupOrderBytes, fetchTypeBytes, joiningSubscribeIdBytes, precedingGroupOffsetBytes, parametersBytes]);
+    body = concatUint8Arrays([subscribeIdBytes, subscriberPriorityBytes, groupOrderBytes, fetchTypeBytes, joiningSubscribeIdBytes, precedingGroupOffsetBytes, parametersBytes]);
   }
 
   const length = serializeQuicVarInt(body.byteLength);
-  return concatBuffer([messageTypeBytes, length, body]);
+  return concatUint8Arrays([messageTypeBytes, length, body]);
 }
 
 export const deserializeFetch = async (controlReader: ReadableStream) => {

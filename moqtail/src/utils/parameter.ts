@@ -1,5 +1,5 @@
 import { CONTROL_MESSAGE, PARAMETER } from "../constants";
-import { concatBuffer, getQuicVarIntLength, serializeQuicVarInt, stringToVarBytes, varBytesToString, deserializeQuicVarInt } from "./bytes"
+import { concatUint8Arrays, getQuicVarIntLength, serializeQuicVarInt, stringToVarBytes, varBytesToString, deserializeQuicVarInt } from 'bytes';
 
 export interface Parameter {
   type: number,
@@ -17,10 +17,10 @@ export const serializeParams = (params: Parameter[]): Uint8Array => {
       len = serializeQuicVarInt(getQuicVarIntLength(param.value));
       value = serializeQuicVarInt(param.value);
     }
-    return concatBuffer([type, len, value]);
+    return concatUint8Arrays([type, len, value]);
   });
   const numParams = serializeQuicVarInt(params.length);
-  return concatBuffer([numParams, ...serialized]);
+  return concatUint8Arrays([numParams, ...serialized]);
 }
 
 export const deserializeParams = async (messageType: number, controlReader: ReadableStream): Promise<Parameter[]> => {

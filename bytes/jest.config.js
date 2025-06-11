@@ -2,10 +2,7 @@
 export default {
   testEnvironment: "node",
   transform: {
-    "^.+\\.tsx?$": ["ts-jest", {}],
-  },
-  moduleNameMapper: {
-    "^bytes$": "<rootDir>/../bytes/src/index.ts"
+    "^.+\\.tsx?$": ["ts-jest", {}]
   },
   testPathIgnorePatterns: ["/node_modules/", "/dist/"]
 };

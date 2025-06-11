@@ -1,5 +1,5 @@
 import { DATAGRAM } from "../constants";
-import { concatBuffer, getUint8, serializeQuicVarInt, setUint8, deserializeQuicVarInt, getQuicVarIntLength } from "../utils/bytes";
+import { concatUint8Arrays, getUint8, serializeQuicVarInt, setUint8, deserializeQuicVarInt, getQuicVarIntLength } from "bytes";
 import { deserializeExtensionHeader, serializeExtensionHeader, serializeExtensionHeaders } from "./extensionHeader";
 import type { ExtensionHeader } from "./extensionHeader";
 
@@ -14,7 +14,7 @@ export const serializeDatagram = (props: Datagram) => {
   const objectIdBytes = serializeQuicVarInt(props.objectId);
   const publisherPriorityBytes = setUint8(props.publisherPriority);
   const extensionHeaderBytes = serializeExtensionHeaders(props.extensionHeaders);
-  const datagram = concatBuffer([typeBytes, trackAliasBytes, groupIdBytes, objectIdBytes, publisherPriorityBytes, extensionHeaderBytes, props.payload]);
+  const datagram = concatUint8Arrays([typeBytes, trackAliasBytes, groupIdBytes, objectIdBytes, publisherPriorityBytes, extensionHeaderBytes, props.payload]);
   return datagram;
 }
 

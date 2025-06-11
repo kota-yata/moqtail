@@ -1,15 +1,15 @@
 import { CONTROL_MESSAGE } from "../constants";
 import { deserializeParams, serializeParams, type Parameter } from "../utils/parameter";
-import { concatBuffer, serializeQuicVarInt, deserializeQuicVarInt } from "../utils/bytes";
+import { concatUint8Arrays, serializeQuicVarInt, deserializeQuicVarInt } from "bytes";
 
 export const serializeClientSetup = (props: { supportedVersions: number[], params?: Parameter[] }) => {
   const messageType = serializeQuicVarInt(CONTROL_MESSAGE.CLIENT_SETUP);
   const versionLength = serializeQuicVarInt(props.supportedVersions.length);
   const version = props.supportedVersions.map(version => serializeQuicVarInt(version));
-  const concatenatedVersions = concatBuffer(version);
+  const concatenatedVersions = concatUint8Arrays(version);
   const parametersBytes = serializeParams(props.params || []);
-  const length = serializeQuicVarInt(concatBuffer([versionLength, concatenatedVersions, parametersBytes]).byteLength);
-  return concatBuffer([messageType, length, versionLength, concatenatedVersions, parametersBytes]);
+  const length = serializeQuicVarInt(concatUint8Arrays([versionLength, concatenatedVersions, parametersBytes]).byteLength);
+  return concatUint8Arrays([messageType, length, versionLength, concatenatedVersions, parametersBytes]);
 }
 
 export const deserializeClientSetup = async (controlReader: ReadableStream) => {

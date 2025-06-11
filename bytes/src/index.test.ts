@@ -2,12 +2,13 @@ import {
   getQuicVarIntLength,
   serializeQuicVarInt,
   deserializeQuicVarIntFromArray,
-  concatBuffer,
+  concatUint8Arrays,
   buffReadFromArray,
   stringToVarBytes,
   varBytesToStringFromArray,
   setUint8,
-} from './bytes';
+  concatBuffer
+} from './index';
 
 describe('utils/bytes', () => {
   test('getNumberLength returns correct length', () => {
@@ -34,10 +35,10 @@ describe('utils/bytes', () => {
     expect(() => deserializeQuicVarIntFromArray(insufficientData)).toThrow();
   });
 
-  test('concatBuffer concatenates buffers correctly', () => {
+  test('concatUint8Arrays concatenates buffers correctly', () => {
     const buf1 = new Uint8Array([1,2]);
     const buf2 = new Uint8Array([3,4]);
-    const result = concatBuffer([buf1, buf2]);
+    const result = concatUint8Arrays([buf1, buf2]);
     expect(result).toEqual(new Uint8Array([1,2,3,4]));
   });
 

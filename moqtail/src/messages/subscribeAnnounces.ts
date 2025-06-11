@@ -1,4 +1,4 @@
-import { serializeQuicVarInt, stringToVarBytes, concatBuffer, deserializeQuicVarInt, varBytesToString } from '../utils/bytes';
+import { serializeQuicVarInt, stringToVarBytes, concatUint8Arrays, deserializeQuicVarInt, varBytesToString } from 'bytes';
 import { CONTROL_MESSAGE } from '../constants';
 import { serializeParams, deserializeParams, type Parameter } from '../utils/parameter';
 import { deserializeNamespace } from '../utils/namespace';
@@ -8,9 +8,9 @@ export const serializeSubscribeAnnounces = (props: { trackNamespacePrefix: strin
   const trackNamespacePrefixLength = serializeQuicVarInt(props.trackNamespacePrefix.length);
   const trackNamespacePrefixBytes = props.trackNamespacePrefix.map(stringToVarBytes);
   const parametersBytes = serializeParams(props.parameters || []);
-  const body = concatBuffer([trackNamespacePrefixLength, ...trackNamespacePrefixBytes, parametersBytes]);
+  const body = concatUint8Arrays([trackNamespacePrefixLength, ...trackNamespacePrefixBytes, parametersBytes]);
   const length = serializeQuicVarInt(body.byteLength);
-  return concatBuffer([messageTypeBytes, length, body]);
+  return concatUint8Arrays([messageTypeBytes, length, body]);
 }
 
 export const deserializeSubscribeAnnounces = async (controlReader: ReadableStream) => {

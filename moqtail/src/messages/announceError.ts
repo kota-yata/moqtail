@@ -1,4 +1,4 @@
-import { serializeQuicVarInt, stringToVarBytes, concatBuffer, deserializeQuicVarInt, varBytesToString } from '../utils/bytes';
+import { serializeQuicVarInt, stringToVarBytes, concatUint8Arrays, deserializeQuicVarInt, varBytesToString } from 'bytes';
 import { CONTROL_MESSAGE, ANNOUNCE_ERROR_REASON } from '../constants';
 import { deserializeNamespace } from '../utils/namespace';
 
@@ -8,9 +8,9 @@ export const serializeAnnounceError = (props: { trackNamespace: string[], errorC
   const trackNamespaceBytes = props.trackNamespace.map(stringToVarBytes);
   const errorCodeBytes = serializeQuicVarInt(props.errorCode);
   const reasonPhraseBytes = stringToVarBytes(props.reasonPhrase);
-  const body = concatBuffer([trackNamespaceLength, ...trackNamespaceBytes, errorCodeBytes, reasonPhraseBytes]);
+  const body = concatUint8Arrays([trackNamespaceLength, ...trackNamespaceBytes, errorCodeBytes, reasonPhraseBytes]);
   const length = serializeQuicVarInt(body.byteLength);
-  return concatBuffer([messageTypeBytes, length, body]);
+  return concatUint8Arrays([messageTypeBytes, length, body]);
 }
 
 export const deserializeAnnounceError = async (controlReader: ReadableStream) => {

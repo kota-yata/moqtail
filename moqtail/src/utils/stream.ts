@@ -1,4 +1,4 @@
-import { readUntilEof } from './bytes';
+import { readUntilEof } from 'bytes';
 
 // readStream reads from a readable stream until EOF and
 // returns the concatenated data as Uint8Array. The optional

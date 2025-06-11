@@ -1,5 +1,5 @@
 import type { ExtensionHeader } from "../../dataStreams/extensionHeader";
-import { concatBuffer, deserializeQuicVarInt, serializeQuicVarInt } from "../../utils/bytes";
+import { concatUint8Arrays, deserializeQuicVarInt, serializeQuicVarInt } from "bytes";
 import { MI_EXTENSION_HEADER_TYPE } from "./miExtensionHeaders";
 
 export type OpusBitstream = {
@@ -20,7 +20,7 @@ export const opusBitstreamToExtensionHeader = (props: OpusBitstream): ExtensionH
   const numChannels = serializeQuicVarInt(props.numChannels);
   const duration = serializeQuicVarInt(props.duration);
   const wallclock = serializeQuicVarInt(props.wallclock);
-  const data = concatBuffer([seqId, pts, timebase, sampleFreq, numChannels, duration, wallclock]);
+  const data = concatUint8Arrays([seqId, pts, timebase, sampleFreq, numChannels, duration, wallclock]);
   return { id: MI_EXTENSION_HEADER_TYPE.OPUS_BITSTREAM, value: data };
 }
 

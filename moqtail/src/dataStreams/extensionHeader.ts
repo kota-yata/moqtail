@@ -1,4 +1,4 @@
-import { buffRead, concatBuffer, serializeQuicVarInt, stringToVarBytes, deserializeQuicVarInt, getQuicVarIntLength } from "../utils/bytes";
+import { buffRead, concatUint8Arrays, serializeQuicVarInt, stringToVarBytes, deserializeQuicVarInt, getQuicVarIntLength } from "bytes";
 
 export interface ExtensionHeader {
   id: number;
@@ -13,11 +13,11 @@ export const serializeExtensionHeader = (props: ExtensionHeader) => {
   if (props.id % 2 === 0) {
     valueBytes = serializeQuicVarInt(props.value as number);
   } else if (typeof props.value === 'object') {
-    valueBytes = concatBuffer([serializeQuicVarInt(props.value.byteLength), props.value]);
+    valueBytes = concatUint8Arrays([serializeQuicVarInt(props.value.byteLength), props.value]);
   } else {
     valueBytes = stringToVarBytes(props.value as string);
   }
-  return concatBuffer([typeBytes, valueBytes]);
+  return concatUint8Arrays([typeBytes, valueBytes]);
 }
 
 export const deserializeExtensionHeader = async (reader: ReadableStream): Promise<{ value: ExtensionHeader, byteLength: number }> => {
@@ -43,5 +43,5 @@ export const serializeExtensionHeaders = (headers: ExtensionHeader[]): Uint8Arra
     return serialized;
   });
   const headersLengthBytes = serializeQuicVarInt(totalLength);
-  return concatBuffer([headersLengthBytes, ...serializedHeaders]);
+  return concatUint8Arrays([headersLengthBytes, ...serializedHeaders]);
 }

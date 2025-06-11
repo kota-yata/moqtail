@@ -4,18 +4,7 @@ import type { Subscribe, ServerSetup, SubscribeOk, SubgroupHeader, SubgroupObjec
 import { moqVideoTransmissionLatencyStore, ringStats } from './utils/store';
 
 import { DatagramBuffer, BufferedDatagram } from "./utils/datagramBuffer";
-
-// TODO: remove this
-const concatUint8Array = (arr: Uint8Array[]) => {
-  const total = arr.reduce((acc, v) => acc + v.byteLength, 0);
-  const ret = new Uint8Array(total);
-  let offset = 0;
-  for (const a of arr) {
-    ret.set(a, offset);
-    offset += a.byteLength;
-  }
-  return ret;
-};
+import { concatUint8Arrays } from "bytes";
 
 // @ts-ignore
 import CommunicatorWorker from './threads/communicator.worker?worker';
@@ -216,7 +205,7 @@ export class Subscriber {
         }
         entry.payloads[info.fragmentIndex] = datagramObject.payload;
         if (entry.payloads.filter(p => p).length === entry.total) {
-          const payload = concatUint8Array(entry.payloads as Uint8Array[]);
+          const payload = concatUint8Arrays(entry.payloads as Uint8Array[]);
           const encodedChunkInit = deserializeEncodedChunkFromArray(payload);
           Mogger.debug(`Datagram object id ${datagramObject.header.objectId} received with all fragments`);
           const combined: BufferedDatagram = { header: entry.header, encodedChunkInit };

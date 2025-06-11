@@ -1,5 +1,5 @@
 import { STREAM } from "../constants";
-import { concatBuffer, getUint8, serializeQuicVarInt, setUint8, deserializeQuicVarInt } from "../utils/bytes";
+import { concatUint8Arrays, getUint8, serializeQuicVarInt, setUint8, deserializeQuicVarInt } from "bytes";
 
 export const serializeSubgroupHeader = (props: SubgroupHeader) => {
   const streamTypeBytes = serializeQuicVarInt(STREAM.SUBGROUP_HEADER);
@@ -7,7 +7,7 @@ export const serializeSubgroupHeader = (props: SubgroupHeader) => {
   const groupIdBytes = serializeQuicVarInt(props.groupId);
   const subgroupIdBytes = serializeQuicVarInt(props.subgroupId);
   const publisherPriorityBytes = setUint8(props.publisherPriority);
-  return concatBuffer([streamTypeBytes, trackAliasBytes, groupIdBytes, subgroupIdBytes, publisherPriorityBytes]);
+  return concatUint8Arrays([streamTypeBytes, trackAliasBytes, groupIdBytes, subgroupIdBytes, publisherPriorityBytes]);
 }
 
 export const deserializeSubgroupHeader = async (controlReader: ReadableStream): Promise<SubgroupHeader> => {

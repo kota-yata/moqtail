@@ -1,4 +1,4 @@
-import { serializeQuicVarInt, concatBuffer, deserializeQuicVarInt, setUint8, getUint8 } from '../utils/bytes';
+import { serializeQuicVarInt, concatUint8Arrays, deserializeQuicVarInt, setUint8, getUint8 } from 'bytes';
 import { CONTROL_MESSAGE } from '../constants';
 import { deserializeParams, type Parameter, serializeParams } from '../utils/parameter';
 
@@ -10,9 +10,9 @@ export const serializeFetchOk = (props: { subscribeId: number, groupOrder: numbe
   const largestGroupIdBytes = serializeQuicVarInt(props.largestGroupId);
   const largestObjectIdBytes = serializeQuicVarInt(props.largestObjectId);
   const parametersBytes = serializeParams(props.parameters || []);
-  const body = concatBuffer([subscribeIdBytes, groupOrderBytes, endOfTrackBytes, largestGroupIdBytes, largestObjectIdBytes, parametersBytes]);
+  const body = concatUint8Arrays([subscribeIdBytes, groupOrderBytes, endOfTrackBytes, largestGroupIdBytes, largestObjectIdBytes, parametersBytes]);
   const length = serializeQuicVarInt(body.byteLength);
-  return concatBuffer([messageTypeBytes, length, body]);
+  return concatUint8Arrays([messageTypeBytes, length, body]);
 }
 
 export const deserializeFetchOk = async (controlReader: ReadableStream) => {
