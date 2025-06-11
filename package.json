@@ -3,7 +3,7 @@
   "name": "moqtail-root",
   "workspaces": [
     "client",
-    "moqtail",
+    "moqtail-core",
     "bytes"
   ]
 }
