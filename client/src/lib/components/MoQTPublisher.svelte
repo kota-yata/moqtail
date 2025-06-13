@@ -113,7 +113,7 @@
     const vt = stream.getVideoTracks()[0];
     Mogger.info(`Streaming ${vt.label}`);
     publisher.startStream({ track: videoTrack, mediaTrack: vt });
-    console.log(at);
+    const at = stream.getAudioTracks()[0];
     Mogger.info(`Streaming ${at.label}`);
     publisher.startStream({ track: audioTrack, mediaTrack: at });
   };

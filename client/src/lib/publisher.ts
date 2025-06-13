@@ -382,6 +382,15 @@ export class Publisher {
     case 'error':
       Mogger.error(`Publisher communicator: ${message.data.data}`);
       break;
+    case 'sessionClosed':
+      this.communicator.terminate();
+      for (const encoder of Object.values(this.videoEncoders)) {
+        encoder.terminate();
+      }
+      for (const encoder of Object.values(this.audioEncoder)) {
+        encoder.terminate();
+      }
+      break;
     default:
       Mogger.error(`Unexpected message type from communicator ${message.data.type}`);
       break;
