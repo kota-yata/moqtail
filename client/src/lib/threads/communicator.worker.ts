@@ -11,11 +11,11 @@ export const COMMUNICATOR_STATE = {
 class MoQTCommunicator {
   private wt: WebTransport;
   private controlStream: WebTransportBidirectionalStream;
-  private controlWriter: WritableStream;
+  private controlWriter: WritableStreamDefaultWriter;
   private controlReader: ReadableStream;
-  private datagramWriter: WritableStream;
+  private datagramWriter: WritableStreamDefaultWriter;
   private datagramReader: ReadableStreamDefaultReader;
-  private streams: Map<number, WritableStream> = new Map();
+  private streams: Map<number, { stream: WritableStream, writer: WritableStreamDefaultWriter }> = new Map();
   private state = 0;
   onMessage(message: MessageEvent) {
     const data = message.data as ThreadMessage;
@@ -43,9 +43,9 @@ class MoQTCommunicator {
     this.wt = new WebTransport(url, { congestionControl: 'throughput' });
     await this.wt.ready;
     this.controlStream = await this.wt.createBidirectionalStream();
-    this.controlWriter = this.controlStream.writable;
+    this.controlWriter = this.controlStream.writable.getWriter();
     this.controlReader = this.controlStream.readable;
-    this.datagramWriter = this.wt.datagrams.writable;
+    this.datagramWriter = this.wt.datagrams.writable.getWriter();
     this.datagramReader = this.wt.datagrams.readable.getReader();
     this.state = this.state | COMMUNICATOR_STATE.RUNNING;
     postMessage({ type: 'datagramMaxSize', data: this.wt.datagrams.maxDatagramSize });
@@ -56,9 +56,7 @@ class MoQTCommunicator {
       Mogger.error('Cannot send control messages as the session is already closed');
       return;
     }
-    const writer = this.controlWriter.getWriter();
-    await writer.write(data);
-    writer.releaseLock();
+    await this.controlWriter.write(data);
     Mogger.debug('Control message sent');
   }
   async closeSubgroupStreams(subgroupIds: number[]) {
@@ -71,15 +69,18 @@ class MoQTCommunicator {
       Mogger.error('Cannot create subgroup streams as the session is already closed');
       return;
     }
-    this.streams.set(subgroupId, await this.wt.createUnidirectionalStream());
-    const writer = this.streams.get(subgroupId).getWriter();
+    const stream = await this.wt.createUnidirectionalStream();
+    const writer = stream.getWriter();
     await writer.write(subgroupHeader);
-    writer.releaseLock();
+    this.streams.set(subgroupId, { stream, writer });
     Mogger.debug('Stream created');
   }
   closeSubgroupStream({ subgroupId }: { subgroupId: number }) {
-    const stream = this.streams.get(subgroupId);
-    if (stream) stream.close();
+    const entry = this.streams.get(subgroupId);
+    if (entry) {
+      entry.writer.close();
+      entry.writer.releaseLock();
+    }
     this.streams.delete(subgroupId);
     Mogger.debug(`Stream with subgroupId: ${subgroupId} closed`);
   }
@@ -90,11 +91,10 @@ class MoQTCommunicator {
     // }
     while (!this.streams.has(subgroupId)) {
       await new Promise((resolve) => setTimeout(resolve, 0.1));
-    };
+    }
+    const { writer } = this.streams.get(subgroupId);
     try {
-      const writer = this.streams.get(subgroupId).getWriter();
       await writer.write(subgroupObject);
-      writer.releaseLock();
     } catch (err) {
       Mogger.error(`Error sending object: ${err}. Closing session...`);
       this.closeSession();
@@ -106,13 +106,19 @@ class MoQTCommunicator {
       this.datagramWriter.close();
       return;
     }
-    const writer = this.datagramWriter.getWriter();
-    writer.write(data);
-    writer.releaseLock();
+    await this.datagramWriter.write(data);
   }
   closeSession() {
     this.state = COMMUNICATOR_STATE.STOPPED;
-    this.controlStream.writable.getWriter().close();
+    this.controlWriter.close();
+    this.controlWriter.releaseLock();
+    this.datagramWriter.close();
+    this.datagramWriter.releaseLock();
+    for (const entry of this.streams.values()) {
+      entry.writer.close();
+      entry.writer.releaseLock();
+    }
+    this.streams.clear();
     this.wt.close();
     Mogger.debug('Session closed');
   }
