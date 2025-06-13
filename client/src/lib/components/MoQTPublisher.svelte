@@ -88,12 +88,19 @@
       subscribers: [],
       groups: [],
     };
+    const at = stream.getAudioTracks()[0];
+    const settings = at.getSettings ? at.getSettings() : {};
+    const audioEncoderConfig = {
+      ...AUDIO_ENCODER_DEFAULT_CONFIG,
+      ...(settings.sampleRate ? { sampleRate: settings.sampleRate } : {}),
+      ...(settings.channelCount ? { numberOfChannels: settings.channelCount } : {}),
+    } as AudioEncoderConfig;
     const audioTrack: Track = {
       namespace,
       name: audioTrackName,
       type: 'audio',
       objectForwardingPrefereces: 'Datagram',
-      encoderConfig: { encoderConfig: AUDIO_ENCODER_DEFAULT_CONFIG, keyFrameDuration },
+      encoderConfig: { encoderConfig: audioEncoderConfig, keyFrameDuration },
       groupOrderPublisherPreference: GROUP_ORDER.ASCENDING,
       subscribers: [],
       groups: [],
@@ -103,7 +110,6 @@
     const vt = stream.getVideoTracks()[0];
     Mogger.info(`Streaming ${vt.label}`);
     publisher.startStream({ track: videoTrack, mediaTrack: vt });
-    const at = stream.getAudioTracks()[0];
     console.log(at);
     Mogger.info(`Streaming ${at.label}`);
     publisher.startStream({ track: audioTrack, mediaTrack: at });
