@@ -53,7 +53,8 @@
     const url = URL.createObjectURL(file);
     liveEl.srcObject = null;
     liveEl.src = url;
-    liveEl.muted = false; // ensure audio track is available
+    // unmute temporarily to ensure the audio track is captured
+    liveEl.muted = false;
     await liveEl.play();
     let capture = liveEl.captureStream();
     // Firefox sometimes omits audio tracks when the element is muted
@@ -64,6 +65,8 @@
       capture.addTrack(audio.captureStream().getAudioTracks()[0]);
     }
     stream = capture;
+    // do not play the source audio locally
+    liveEl.muted = true;
   };
   const connectToServer = async () => {
     if (publisherInit) return;
