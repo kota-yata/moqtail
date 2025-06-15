@@ -27,16 +27,23 @@ export class Subscriber {
   private datagramBuffer = new DatagramBuffer();
   private datagramFragments: Map<string, { total: number; payloads: Uint8Array[]; header: Datagram }> = new Map();
   private videoTimestampOffset: number | null = null;
+  private audioTimestampOffset: number | null = null;
   private receivedBytes = 0;
   private bitrateInterval: NodeJS.Timeout;
   private audioNode: AudioWorkletNode;
   private communicator: Worker;
   private videoGenerator?: MediaStreamTrackGenerator<VideoFrame>;
   private videoWriter?: WritableStreamDefaultWriter<VideoFrame>;
+  private jitterBufferDelay: number;
+  private videoBuffer: { time: number; frame: VideoFrame }[] = [];
+  private audioBuffer: { time: number; buffer: Float32Array }[] = [];
+  private jitterInterval: NodeJS.Timeout;
   constructor(props: SubscriberInitProps) {
     this.communicator = new CommunicatorWorker();
     this.communicator.onmessage = this.communicatorMessageHandler.bind(this);
     this.communicator.postMessage({ type: 'startConnection', data: props.serverUrl });
+    this.jitterBufferDelay = props.jitterBufferFrameSize ?? 100;
+    this.jitterInterval = setInterval(() => this.flushJitterBuffers(), 10);
     this.bitrateInterval = setInterval(() => {
       bitrateStore.set(this.receivedBytes * 8);
       this.receivedBytes = 0;
@@ -169,7 +176,7 @@ export class Subscriber {
       this.videoWaitingForKeyFrame = false;
       this.currentVideoGroupId = groupId ?? null;
       if (this.videoTimestampOffset === null) {
-        this.videoTimestampOffset = performance.now() - (encodedChunkInit.timestamp ?? 0) / 1000;
+        this.videoTimestampOffset = performance.now() + this.jitterBufferDelay - (encodedChunkInit.timestamp ?? 0) / 1000;
         this.datagramBuffer.setTimestampOffset(this.videoTimestampOffset);
       }
       const videoTrackAlias: number = message.data.data.trackAlias;
@@ -268,19 +275,24 @@ export class Subscriber {
     switch (message.data.type) {
     case 'videoFrame':
       const vfData = message.data.data as { subscribeId: number, frame: VideoFrame };
-      if (this.videoWriter) {
-        this.videoWriter.write(vfData.frame).then(() => vfData.frame.close());
+      if (this.videoTimestampOffset === null) {
+        this.videoTimestampOffset = performance.now() + this.jitterBufferDelay - vfData.frame.timestamp / 1000;
       }
+      const playTimeV = vfData.frame.timestamp / 1000 + this.videoTimestampOffset;
+      this.videoBuffer.push({ time: playTimeV, frame: vfData.frame });
+      this.videoBuffer.sort((a, b) => a.time - b.time);
       break;
     case 'audioData':
       const ad = message.data.data.audioData as AudioData;
       const audioBuffer = new Float32Array(ad.numberOfFrames * ad.numberOfChannels);
       // assume monoral
       ad.copyTo(audioBuffer, { planeIndex: 0 });
-      this.audioNode.port.postMessage({
-        type: 'audioData',
-        buffer: audioBuffer.buffer,
-      }, [audioBuffer.buffer]);
+      if (this.audioTimestampOffset === null) {
+        this.audioTimestampOffset = performance.now() + this.jitterBufferDelay - ad.timestamp / 1000;
+      }
+      const playTimeA = ad.timestamp / 1000 + this.audioTimestampOffset;
+      this.audioBuffer.push({ time: playTimeA, buffer: audioBuffer });
+      this.audioBuffer.sort((a, b) => a.time - b.time);
       break;
     }
   }
@@ -293,6 +305,27 @@ export class Subscriber {
     case 'error':
       Mogger.error(`Audio processor error: ${message.data.data}`);
       break;
+    }
+  }
+
+  private flushJitterBuffers() {
+    const now = performance.now();
+    while (this.videoBuffer.length && this.videoBuffer[0].time <= now) {
+      const v = this.videoBuffer.shift()!;
+      if (this.videoWriter) {
+        this.videoWriter.write(v.frame).then(() => v.frame.close());
+      } else {
+        v.frame.close();
+      }
+    }
+    while (this.audioBuffer.length && this.audioBuffer[0].time <= now) {
+      const a = this.audioBuffer.shift()!;
+      if (this.audioNode) {
+        this.audioNode.port.postMessage({
+          type: 'audioData',
+          buffer: a.buffer.buffer,
+        }, [a.buffer.buffer]);
+      }
     }
   }
 
