@@ -28,6 +28,13 @@
     </div>
     <div class="right">
       <MoQTSubscriber {moqtServerUrl} videoWidth={480} videoHeight={360} />
+      <MoQTSubscriber
+        {moqtServerUrl}
+        videoWidth={480}
+        videoHeight={360}
+        videoTrackName="video1"
+        audioTrackName="audio1"
+      />
     </div>
   </div>
 </div>

@@ -11,9 +11,9 @@
   export let moqtServerUrl;
   export let videoWidth = 480;
   export let videoHeight = 360;
-  let namespace = ['moqtail'];
-  let videoTrackName = 'video0';
-  let audioTrackName = 'audio0';
+  export let namespace = ['moqtail'];
+  export let videoTrackName = 'video0';
+  export let audioTrackName = 'audio0';
   let jitterBufferSize = 10;
 
   // let videoQuality: 'low' | 'medium' | 'high' = 'low';
