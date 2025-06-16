@@ -64,9 +64,12 @@
     subscriber.stopAudio();
   };
 
-  const toggleAscii = () => {
+  import { tick } from 'svelte';
+
+  const toggleAscii = async () => {
     if (!subscriber) return;
     asciiMode = !asciiMode;
+    await tick();
     if (asciiMode) {
       const width = 80;
       const height = Math.round(width * videoHeight / videoWidth);
