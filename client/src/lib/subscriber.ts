@@ -5,6 +5,7 @@ import { moqVideoTransmissionLatencyStore, ringStats, bitrateStore } from './uti
 
 import { DatagramBuffer, BufferedDatagram } from "./utils/datagramBuffer";
 import { concatUint8Arrays } from "bytes";
+import { frameToAscii } from './utils/ascii';
 
 // @ts-ignore
 import CommunicatorWorker from './threads/communicator.worker?worker';
@@ -33,6 +34,9 @@ export class Subscriber {
   private communicator: Worker;
   private videoGenerator?: MediaStreamTrackGenerator<VideoFrame>;
   private videoWriter?: WritableStreamDefaultWriter<VideoFrame>;
+  private asciiElement?: HTMLElement;
+  private asciiWidth = 80;
+  private asciiHeight = 60;
   constructor(props: SubscriberInitProps) {
     this.communicator = new CommunicatorWorker();
     this.communicator.onmessage = this.communicatorMessageHandler.bind(this);
@@ -71,6 +75,11 @@ export class Subscriber {
     const stream = new MediaStream([this.videoGenerator]);
     videoElement.srcObject = stream;
     this.videoWriter = this.videoGenerator.writable.getWriter();
+  }
+  setAsciiElement(el: HTMLElement, width = 80, height = 60) {
+    this.asciiElement = el;
+    this.asciiWidth = width;
+    this.asciiHeight = height;
   }
   async setAudioContext() {
     const audioCtx = new AudioContext({ sampleRate: 48000 }); // TODO: use the sample rate from the server
@@ -268,8 +277,14 @@ export class Subscriber {
     switch (message.data.type) {
     case 'videoFrame':
       const vfData = message.data.data as { subscribeId: number, frame: VideoFrame };
+      if (this.asciiElement) {
+        const ascii = frameToAscii(vfData.frame, this.asciiWidth, this.asciiHeight);
+        this.asciiElement.textContent = ascii;
+      }
       if (this.videoWriter) {
         this.videoWriter.write(vfData.frame).then(() => vfData.frame.close());
+      } else {
+        vfData.frame.close();
       }
       break;
     case 'audioData':

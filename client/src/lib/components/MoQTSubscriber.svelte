@@ -7,6 +7,7 @@
   let subscriberInit = false;
   let subscriber: Subscriber;
   let setupSent = false;
+  let asciiEl: HTMLElement;
 
   export let moqtServerUrl;
   export let videoWidth = 480;
@@ -26,6 +27,7 @@
     });
     subscriberInit = true;
     subscriber.setVideoElement(videoEl);
+    subscriber.setAsciiElement(asciiEl);
     subscriber.setAudioContext();
   };
   const setup = () => {
@@ -66,6 +68,7 @@
 <div class="sub">
   <h3>Subscriber</h3>
   <video width={videoWidth} height={videoHeight} autoplay controls bind:this={videoEl}></video>
+  <pre class="ascii" bind:this={asciiEl}></pre>
   <div class="track">
     <div>
       <label for="pub-track-namespace">Track Namespace</label>
@@ -107,5 +110,10 @@
   }
   video {
     background-color: #333;
+  }
+  .ascii {
+    font-family: monospace;
+    line-height: 1;
+    white-space: pre;
   }
 </style>
