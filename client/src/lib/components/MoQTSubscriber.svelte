@@ -8,6 +8,7 @@
   let subscriber: Subscriber;
   let setupSent = false;
   let asciiEl: HTMLElement;
+  let asciiMode = false;
 
   export let moqtServerUrl;
   export let videoWidth = 480;
@@ -27,7 +28,6 @@
     });
     subscriberInit = true;
     subscriber.setVideoElement(videoEl);
-    subscriber.setAsciiElement(asciiEl);
     subscriber.setAudioContext();
   };
   const setup = () => {
@@ -63,12 +63,27 @@
     subscriber.unsubscribe(audioTrackName);
     subscriber.stopAudio();
   };
+
+  const toggleAscii = () => {
+    if (!subscriber) return;
+    asciiMode = !asciiMode;
+    if (asciiMode) {
+      const width = 80;
+      const height = Math.round(width * videoHeight / videoWidth);
+      subscriber.setAsciiElement(asciiEl, width, height);
+    } else {
+      subscriber.setAsciiElement();
+    }
+  };
 </script>
 
 <div class="sub">
   <h3>Subscriber</h3>
-  <video width={videoWidth} height={videoHeight} autoplay controls bind:this={videoEl}></video>
-  <pre class="ascii" bind:this={asciiEl}></pre>
+  {#if asciiMode}
+    <pre class="ascii" bind:this={asciiEl}></pre>
+  {:else}
+    <video width={videoWidth} height={videoHeight} autoplay controls bind:this={videoEl}></video>
+  {/if}
   <div class="track">
     <div>
       <label for="pub-track-namespace">Track Namespace</label>
@@ -98,6 +113,7 @@
   <button on:click={setup}>Setup</button>
   <button on:click={playStream}>Start playback</button>
   <button on:click={stopStream}>Stop playback</button>
+  <button on:click={toggleAscii}>{asciiMode ? 'Go video' : 'Go ASCII'}</button>
 </div>
 
 <style>

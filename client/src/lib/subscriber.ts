@@ -76,7 +76,7 @@ export class Subscriber {
     videoElement.srcObject = stream;
     this.videoWriter = this.videoGenerator.writable.getWriter();
   }
-  setAsciiElement(el: HTMLElement, width = 80, height = 60) {
+  setAsciiElement(el?: HTMLElement, width = 80, height = 60) {
     this.asciiElement = el;
     this.asciiWidth = width;
     this.asciiHeight = height;
