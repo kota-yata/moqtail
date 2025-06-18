@@ -7,6 +7,9 @@ import {
   stringToVarBytes,
   varBytesToStringFromArray,
   setUint8,
+  setUint16,
+  getUint16,
+  getUint16FromArray,
   concatBuffer
 } from './index';
 
@@ -71,5 +74,25 @@ describe('utils/bytes', () => {
   test('setUint8 creates correct buffer', () => {
     expect(setUint8(255)).toEqual(new Uint8Array([255]));
     expect(setUint8(0)).toEqual(new Uint8Array([0]));
+  });
+
+  test('setUint16 and getUint16 round trip', async () => {
+    const buf = setUint16(65535);
+    expect(buf).toEqual(new Uint8Array([0xff, 0xff]));
+    const stream = new ReadableStream<Uint8Array>({
+      start(c) {
+        c.enqueue(buf);
+        c.close();
+      },
+      type: 'bytes'
+    } as any);
+    await expect(getUint16(stream)).resolves.toBe(65535);
+  });
+
+  test('getUint16FromArray reads correctly', () => {
+    const arr = new Uint8Array([0x01, 0x02, 0x03]);
+    const { value, byteLength } = getUint16FromArray(arr, 1);
+    expect(value).toBe(0x0203);
+    expect(byteLength).toBe(2);
   });
 });

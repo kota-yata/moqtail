@@ -1,4 +1,4 @@
-import { serializeQuicVarInt, stringToVarBytes, concatUint8Arrays, deserializeQuicVarInt, varBytesToString } from 'bytes';
+import { serializeQuicVarInt, stringToVarBytes, concatUint8Arrays, deserializeQuicVarInt, varBytesToString, setUint16, getUint16 } from 'bytes';
 import { CONTROL_MESSAGE, SUBSCRIBE_ERROR_REASON } from '../constants';
 
 export const serializeSubscribeError = (props: SubscribeError) => {
@@ -8,12 +8,12 @@ export const serializeSubscribeError = (props: SubscribeError) => {
   const reasonPhraseBytes = stringToVarBytes(props.reasonPhrase);
   const trackAliasBytes = serializeQuicVarInt(props.trackAlias);
   const body = concatUint8Arrays([subscribeIdBytes, errorCodeBytes, reasonPhraseBytes, trackAliasBytes]);
-  const length = serializeQuicVarInt(body.byteLength);
+  const length = setUint16(body.byteLength);
   return concatUint8Arrays([messageTypeBytes, length, subscribeIdBytes, errorCodeBytes, reasonPhraseBytes, trackAliasBytes]);
 }
 
 export const deserializeSubscribeError = async (controlReader: ReadableStream): Promise<SubscribeError> => {
-  await deserializeQuicVarInt(controlReader); // length
+  await getUint16(controlReader); // length
   const subscribeId = await deserializeQuicVarInt(controlReader);
   const errorCode = await deserializeQuicVarInt(controlReader) as SUBSCRIBE_ERROR_REASON;
   if (!Object.values(SUBSCRIBE_ERROR_REASON).includes(errorCode)) {

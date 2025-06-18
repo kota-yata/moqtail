@@ -2,3 +2,6 @@
 .DS_Store
 
 **/dist
+.yarn
+draft*.txt
+.yarnrc.yml
