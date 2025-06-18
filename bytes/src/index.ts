@@ -163,11 +163,24 @@ export const setUint8 = (v: number) => {
   return ret;
 };
 
-const setUint16 = (v: number) => {
+export const setUint16 = (v: number) => {
   const ret = new Uint8Array(2);
   const view = new DataView(ret.buffer);
   view.setUint16(0, v);
   return ret;
+};
+
+export const getUint16 = async (readableStream: ReadableStream): Promise<number> => {
+  const buf = await buffRead(readableStream, 2);
+  return new DataView(buf.buffer).getUint16(0);
+};
+
+export const getUint16FromArray = (data: Uint8Array, offset: number = 0): { value: number; byteLength: number } => {
+  if (offset + 2 > data.length) {
+    throw new Error('short buffer');
+  }
+  const value = new DataView(data.buffer, data.byteOffset + offset, 2).getUint16(0);
+  return { value, byteLength: 2 };
 };
 
 const setUint32 = (v: number) => {

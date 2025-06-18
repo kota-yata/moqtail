@@ -1,4 +1,4 @@
-import { serializeQuicVarInt, concatUint8Arrays, deserializeQuicVarInt, stringToVarBytes, varBytesToString, setUint8, getUint8 } from 'bytes';
+import { serializeQuicVarInt, concatUint8Arrays, deserializeQuicVarInt, stringToVarBytes, varBytesToString, setUint8, getUint8, setUint16, getUint16 } from 'bytes';
 import { CONTROL_MESSAGE, FETCH_TYPE } from '../constants';
 import { deserializeParams, type Parameter, serializeParams } from '../utils/parameter';
 import { deserializeNamespace } from '../utils/namespace';
@@ -34,12 +34,12 @@ export const serializeFetch = (props: { subscribeId: number, subscriberPriority:
     body = concatUint8Arrays([subscribeIdBytes, subscriberPriorityBytes, groupOrderBytes, fetchTypeBytes, joiningSubscribeIdBytes, precedingGroupOffsetBytes, parametersBytes]);
   }
 
-  const length = serializeQuicVarInt(body.byteLength);
+  const length = setUint16(body.byteLength);
   return concatUint8Arrays([messageTypeBytes, length, body]);
 }
 
 export const deserializeFetch = async (controlReader: ReadableStream) => {
-  await deserializeQuicVarInt(controlReader); // length
+  await getUint16(controlReader); // length
   const subscribeId = await deserializeQuicVarInt(controlReader);
   const subscriberPriority = await getUint8(controlReader);
   const groupOrder = await getUint8(controlReader);

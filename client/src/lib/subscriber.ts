@@ -1,5 +1,5 @@
 import { Mogger } from './utils/mogger';
-import { CONTROL_MESSAGE, deserializeVideoDecoderConfig, LOC_EXTENSION_HEADER_TYPE, MOQT_DRAFT08_VERSION, MOQT_DRAFT09_VERSION, MOQT_DRAFT10_VERSION, serializeClientSetup, serializeSubscribe, STREAM, deserializeAudioDecoderConfig, serializeUnsubscribe, OBJECT_STATUS, deserializeDatagramFragmentInfo, deserializeEncodedChunkFromArray } from 'moqtail';
+import { CONTROL_MESSAGE, deserializeVideoDecoderConfig, LOC_EXTENSION_HEADER_TYPE, MOQT_DRAFT11_VERSION, serializeClientSetup, serializeSubscribe, STREAM, deserializeAudioDecoderConfig, serializeUnsubscribe, OBJECT_STATUS, deserializeDatagramFragmentInfo, deserializeEncodedChunkFromArray } from 'moqtail';
 import type { Subscribe, ServerSetup, SubscribeOk, SubgroupHeader, SubgroupObject, SubscribeError, Datagram } from 'moqtail';
 import { moqVideoTransmissionLatencyStore, ringStats, bitrateStore } from './utils/store';
 
@@ -17,7 +17,7 @@ import AudioDecoderWorker from './threads/audio/decoder.worker?worker';
 import AudioWorkletURL from './threads/audio/processor.worker?worker&url';
 
 export class Subscriber {
-  private supportedVersions = [MOQT_DRAFT08_VERSION, MOQT_DRAFT09_VERSION, MOQT_DRAFT10_VERSION];
+  private supportedVersions = [MOQT_DRAFT11_VERSION];
   private selectedVersion = 0;
   private subscription: RegisteredSubscription[] = [];
   private videoWaitingForKeyFrame = true;

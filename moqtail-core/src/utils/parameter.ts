@@ -33,9 +33,9 @@ export const deserializeParams = async (messageType: number, controlReader: Read
         case PARAMETER.SETUP.PATH.KEY:
           ret.push({ type: PARAMETER.SETUP.PATH.KEY, value: await varBytesToString(controlReader) });
           break;
-        case PARAMETER.SETUP.MAX_SUBSCRIBE_ID.KEY:
+        case PARAMETER.SETUP.MAX_REQUEST_ID.KEY:
           await deserializeQuicVarInt(controlReader); // length
-          ret.push({ type: PARAMETER.SETUP.MAX_SUBSCRIBE_ID.KEY, value: await deserializeQuicVarInt(controlReader) });
+          ret.push({ type: PARAMETER.SETUP.MAX_REQUEST_ID.KEY, value: await deserializeQuicVarInt(controlReader) });
           break
         case PARAMETER.SETUP.MAX_AUTH_TOKEN_CACHE_SIZE.KEY:
           break;

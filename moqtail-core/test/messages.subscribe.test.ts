@@ -108,8 +108,7 @@ describe('control messages subscribe', () => {
     const props = { subscribeId:1, startGroup:1, startObject:1, endGroup:1, subscriberPriority:1, parameters:[] };
     const bytes = serializeSubscribeUpdate(props);
     const typeLen = serializeQuicVarInt(CONTROL_MESSAGE.SUBSCRIBE_UPDATE).byteLength;
-    const lenLen = 1; // body length under 63
-    const stream = streamFromArray(bytes.slice(typeLen + lenLen));
+    const stream = streamFromArray(bytes.slice(typeLen));
     await expect(deserializeSubscribeUpdate(stream)).resolves.toEqual(props);
   });
 
