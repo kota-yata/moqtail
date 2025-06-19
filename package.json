@@ -4,6 +4,7 @@
   "workspaces": [
     "client",
     "moqtail-core",
-    "bytes"
+    "bytes",
+    "interop"
   ]
 }
