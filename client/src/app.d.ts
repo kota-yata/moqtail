@@ -14,11 +14,12 @@ declare global {
     serverUrl: string,
     jitterBufferFrameSize?: number,
   };
+  type TrackType = 'video' | 'audio' | 'catalog';
   type RegisteredSubscription = {
     subscribe: Subscribe,
     subscribeOk: boolean,
     decoder: Worker,
-    type: 'video' | 'audio';
+    type: TrackType;
   };
   // Types for publisher
   type MyEncoderConfig = {
@@ -35,7 +36,7 @@ declare global {
     largestObjectId?: number;
     isTrackEnded?: boolean;
     encoderConfig?: MyEncoderConfig;
-    type: 'video' | 'audio';
+    type: TrackType;
     subscribers: { subscribeId: number, trackAlias: number, filterType: SUBSCRIBE_FILTER }[];
     streamCount?: number;
   }
