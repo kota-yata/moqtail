@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Subscriber } from '$lib/subscriber';
-  import { GROUP_ORDER, type Subscribe, SUBSCRIBE_FILTER } from 'moqtail';
+  import { GROUP_ORDER, type Subscribe, SUBSCRIBE_FILTER, WARP_CATALOG_TRACK_NAME } from 'moqtail';
 
   let videoEl: HTMLVideoElement;
   let moqIsPlaying = false;
@@ -15,6 +15,14 @@
   let videoTrackName = 'video0';
   let audioTrackName = 'audio0';
   let jitterBufferSize = 10;
+  let warpCatalogEnabled = true;
+  let availableTracks = [];
+  let catalog = null;
+
+  let subscribeId = 0;
+  const nextSubscribeId = () => {
+    return subscribeId++;
+  };
 
   // let videoQuality: 'low' | 'medium' | 'high' = 'low';
 
@@ -27,18 +35,43 @@
     subscriberInit = true;
     subscriber.setVideoElement(videoEl);
     subscriber.setAudioContext();
+    
+    // Set up WARP catalog callbacks if enabled
+    if (warpCatalogEnabled) {
+      subscriber.warpCatalogManager.onCatalogUpdate((updatedCatalog) => {
+        catalog = updatedCatalog;
+      });
+      
+      subscriber.warpCatalogManager.onTrackUpdate((tracks) => {
+        availableTracks = tracks;
+      });
+    }
   };
   const setup = () => {
     if (!subscriber || setupSent) return;
     subscriber.setup();
     setupSent = true;
+    
+    // Subscribe to WARP catalog if enabled
+    if (warpCatalogEnabled) {
+      const subscribeCatalog: Subscribe = {
+        subscribeId: nextSubscribeId(),
+        trackAlias: 242,
+        trackNamespace: namespace,
+        trackName: WARP_CATALOG_TRACK_NAME,
+        subscriberPriority: 20,
+        groupOrder: GROUP_ORDER.ASCENDING,
+        filterType: SUBSCRIBE_FILTER.LATEST_OBJECT,
+      };
+      subscriber.subscribe(subscribeCatalog, 'catalog');
+    }
   };
   const playStream = () => {
     if (!subscriber || !setupSent) return;
     const subscribeVideo: Subscribe = {
       trackNamespace: namespace,
       trackName: videoTrackName,
-      subscribeId: 0,
+      subscribeId: nextSubscribeId(),
       trackAlias: 243,
       subscriberPriority: 10,
       groupOrder: GROUP_ORDER.ASCENDING,
@@ -48,7 +81,7 @@
     const subscribeAudio: Subscribe = {
       trackNamespace: namespace,
       trackName: audioTrackName,
-      subscribeId: 1,
+      subscribeId: nextSubscribeId(),
       trackAlias: 241,
       subscriberPriority: 1,
       groupOrder: GROUP_ORDER.ASCENDING,
@@ -57,6 +90,9 @@
     subscriber.subscribe(subscribeAudio, 'audio');
   };
   const stopStream = () => {
+    if (warpCatalogEnabled) {
+      subscriber.unsubscribe(WARP_CATALOG_TRACK_NAME);
+    }
     subscriber.unsubscribe(videoTrackName);
     subscriber.unsubscribe(audioTrackName);
     subscriber.stopAudio();
@@ -80,6 +116,12 @@
       <input type="text" name="pub-track-audio" bind:value={audioTrackName} />
     </div>
     <div>
+      <label for="warp-catalog">
+        <input type="checkbox" id="warp-catalog" bind:checked={warpCatalogEnabled} />
+        Enable WARP Catalog
+      </label>
+    </div>
+    <div>
       <!-- <label for="pub-track-jitter">Jitter Buffer {jitterBufferSize}ms</label> -->
       <!-- <input
         type="range"
@@ -95,9 +137,67 @@
   <button on:click={setup}>Setup</button>
   <button on:click={playStream}>Start playback</button>
   <button on:click={stopStream}>Stop playback</button>
+  
+  {#if warpCatalogEnabled && catalog}
+    <div class="warp-catalog">
+      <h4>WARP Catalog (Version {catalog.version})</h4>
+      <p>Delta Updates: {catalog.supportsDeltaUpdates ? 'Enabled' : 'Disabled'}</p>
+      <p>Available Tracks: {availableTracks.length}</p>
+      
+      {#if availableTracks.length > 0}
+        <div class="tracks-list">
+          <h5>Tracks:</h5>
+          {#each availableTracks as track}
+            <div class="track-item">
+              <strong>{track.name}</strong>
+              {#if track.codec}({track.codec}){/if}
+              {#if track.width && track.height}
+                - {track.width}x{track.height}
+              {/if}
+              {#if track.framerate}
+                @ {track.framerate}fps
+              {/if}
+              {#if track.bitrate}
+                - {Math.round(track.bitrate / 1000)}kbps
+              {/if}
+              {#if track.renderGroup !== undefined}
+                - Render Group: {track.renderGroup}
+              {/if}
+              {#if track.altGroup !== undefined}
+                - Alt Group: {track.altGroup}
+              {/if}
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <style>
+  .warp-catalog {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+  }
+  
+  .tracks-list {
+    margin-top: 10px;
+  }
+  
+  .track-item {
+    padding: 5px 0;
+    border-bottom: 1px solid #eee;
+    font-family: monospace;
+    font-size: 12px;
+  }
+  
+  .track-item:last-child {
+    border-bottom: none;
+  }
+
   .sub {
     width: 100%;
     display: flex;

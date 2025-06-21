@@ -10,6 +10,8 @@ import {
   getMiExtensionHeaders,
   MI_MEDIA_TYPE,
   captureTimestampToExtensionHeader,
+  WARP_CATALOG_TRACK_NAME,
+  GROUP_ORDER,
 } from 'moqtail';
 import type { ServerSetup, AnnounceOk, Subscribe, Unsubscribe, ExtensionHeader, Datagram } from 'moqtail';
 // @ts-ignore
@@ -19,6 +21,7 @@ import VideoEncoderWorker from './threads/video/encoder.worker?worker';
 // @ts-ignore
 import AudioEncoderWorker from './threads/audio/encoder.worker?worker';
 import { TrackManager } from './trackManager';
+import { WarpCatalogManager } from './warpCatalogManager';
 import { Mogger } from './utils/mogger';
 
 export class Publisher {
@@ -26,14 +29,19 @@ export class Publisher {
   private videoEncoders: { [key: string]: Worker } = {};
   private audioEncoders: { [key: string]: Worker } = {};
   private trackManager: TrackManager = new TrackManager();
+  private warpCatalogManager: WarpCatalogManager = new WarpCatalogManager();
   private supportedVersions = [MOQT_DRAFT10_VERSION];
   private selectedVersion = 0;
   private maxSubscribeId = 1000;
   private datagramMaxSize = 1024;
+  private namespace: string[] = [];
   constructor(props: PublisherInitProps) {
     this.communicator = new CommunicatorWorker();
     this.communicator.onmessage = this.communicatorMessageHandler.bind(this);
     this.communicator.postMessage({ type: 'startConnection', data: props.serverUrl });
+    
+    // Set trackManager reference in warpCatalogManager
+    this.warpCatalogManager.setTrackManager(this.trackManager);
   }
   registerTrack(track: Track): VideoEncoderWorker | AudioEncoderWorker {
     this.trackManager.upsertTrack(track);
@@ -42,11 +50,13 @@ export class Publisher {
       this.videoEncoders[track.name].onmessage = this.videoEncoderMessageHandler.bind(this);
       this.videoEncoders[track.name].postMessage({ type: 'init', data: track });
       return this.videoEncoders[track.name];
-    } else {
+    } else if (track.type === 'audio') {
       this.audioEncoders[track.name] = new AudioEncoderWorker();
       this.audioEncoders[track.name].onmessage = this.audioEncoderMessageHandler.bind(this);
       this.audioEncoders[track.name].postMessage({ type: 'init', data: track });
       return this.audioEncoders[track.name];
+    } else {
+      throw new Error(`registerTrack only supports video and audio. received: ${track.type}`);
     }
   }
   startStream({ track, mediaTrack }: { track: Track, mediaTrack: MediaStreamTrack }) {
@@ -122,6 +132,7 @@ export class Publisher {
     this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
   }
   announce(namespace: string[]) {
+    this.namespace = namespace;
     const msg = serializeAnnounce({ trackNamespace: namespace });
     this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
   }
@@ -138,13 +149,141 @@ export class Publisher {
     });
     this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
   }
-  private getPublisherPriority(trackType: 'video' | 'audio', subgroupId = 128) {
+
+  // WARP Catalog Methods
+  initializeWarpCatalog() {
+    // Register catalog track to TrackManager first
+    const catalogTrack: Track = {
+      namespace: this.namespace,
+      name: WARP_CATALOG_TRACK_NAME,
+      groups: [],
+      groupOrderPublisherPreference: GROUP_ORDER.ASCENDING,
+      objectForwardingPrefereces: 'Datagram',
+      type: 'catalog',
+      subscribers: [],
+      streamCount: 0
+    };
+    this.trackManager.upsertTrack(catalogTrack);
+    
+    // Initialize WARP catalog from trackManager (it will read media tracks automatically)
+    this.warpCatalogManager.initializeCatalog(this.namespace.join('/'));
+    this.publishCatalog();
+  }
+
+  // Publish the current WARP catalog
+  publishCatalog(alias?: number) {
+    const catalogData = this.warpCatalogManager.serializeCatalog();
+    if (catalogData && alias !== undefined) {
+      this.sendCatalog(alias, catalogData);
+    } else if (catalogData) {
+      this.broadcastCatalog(catalogData);
+    }
+  }
+
+  broadcastCatalog(catalogData: Uint8Array) {
+    const interestedAliases = this.getAliasOfSubscribersForCatalog();
+    interestedAliases.map(alias => { this.sendCatalog(alias, catalogData) });
+  }
+
+  sendCatalog(alias: number, catalogData: Uint8Array) {
+    const datagram: Datagram = {
+      trackAlias: alias,
+      groupId: 0,
+      objectId: Date.now(),
+      publisherPriority: this.getPublisherPriority('catalog'),
+      extensionHeaders: [],
+      payload: catalogData,
+    };
+    this.sendDatagram(datagram);
+  }
+
+  private getAliasOfSubscribersForCatalog(): number[] {
+    // Find subscribers interested in the catalog track
+    const catalogTrack = this.trackManager.getTrack({ name: WARP_CATALOG_TRACK_NAME });
+    if (catalogTrack) {
+      return catalogTrack.subscribers
+        .filter(sub => sub.filterType === SUBSCRIBE_FILTER.LATEST_OBJECT)
+        .map(sub => sub.trackAlias);
+    }
+    return [];
+  }
+
+  addWarpTrack(track: Track) {
+    // Track is already added to trackManager via registerTrack()
+    // Just ensure catalog track is registered and update catalog
+    if (!this.trackManager.getTrack({ name: WARP_CATALOG_TRACK_NAME })) {
+      const catalogTrack: Track = {
+        namespace: this.namespace,
+        name: WARP_CATALOG_TRACK_NAME,
+        groups: [],
+        groupOrderPublisherPreference: GROUP_ORDER.ASCENDING,
+        objectForwardingPrefereces: 'Datagram',
+        type: 'catalog',
+        subscribers: [],
+        streamCount: 0
+      };
+      this.trackManager.upsertTrack(catalogTrack);
+    }
+    
+    // Update catalog (warpCatalogManager will read from trackManager)
+    if (this.warpCatalogManager.supportsDeltaUpdates()) {
+      const patchData = this.warpCatalogManager.createAddTrackPatch(track.name, this.namespace.join('/'));
+      this.broadcastCatalog(patchData);
+    } else {
+      this.warpCatalogManager.rebuildCatalog(this.namespace.join('/'));
+      this.publishCatalog();
+    }
+  }
+
+  removeWarpTrack(trackName: string) {
+    // Remove track from trackManager and update catalog
+    const track = this.trackManager.getTrack({ name: trackName });
+    if (track) {
+      // Stop encoding and notify subscribers
+      track.subscribers.forEach(sub => {
+        this.subscribeDone(sub.subscribeId, track);
+        this.trackManager.removeSubscriber(sub.subscribeId);
+      });
+
+      // Remove from trackManager (warpCatalogManager will read updated state)
+      this.trackManager.removeTrack(trackName);
+      
+      // Update catalog
+      if (this.warpCatalogManager.supportsDeltaUpdates()) {
+        const patchData = this.warpCatalogManager.createRemoveTrackPatch(trackName, this.namespace.join('/'));
+        if (patchData) {
+          this.broadcastCatalog(patchData);
+        }
+      } else {
+        this.warpCatalogManager.rebuildCatalog(this.namespace.join('/'));
+        this.publishCatalog();
+      }
+    }
+  }
+
+  terminateWarpSession() {
+    // Publish terminating catalog (empty tracks)
+    const terminatingCatalog = this.warpCatalogManager.createTerminatingCatalog();
+    this.broadcastCatalog(terminatingCatalog);
+  }
+
+  getWarpCatalog() {
+    return this.warpCatalogManager.getCurrentCatalog();
+  }
+
+  getTimeAlignedTracks() {
+    return this.warpCatalogManager.getTimeAlignedTracks();
+  }
+  private getPublisherPriority(trackType: TrackType, subgroupId = 128) {
     if (trackType === 'audio') {
       return 0;
-    } else {
+    } else if (trackType === 'video') {
       // video is less prioritized than audio (10 is just random)
       // publisher priority must be between 0-255
       return (subgroupId + 10 % 256);
+    } else {
+      // catalog tracks are not prioritized
+      return 255;
     }
   }
   private sendEndOfGroup(lastSubgroupId: number, lastObjectId: number) {
@@ -175,13 +314,14 @@ export class Publisher {
     targetTrack.streamCount++;
   }
 
-  private sendDatagramWithFragmentation(datagram: Datagram) {
+  private sendDatagram(datagram: Datagram) {
     const baseSize = serializeDatagram({ ...datagram, payload: new Uint8Array(0) }).byteLength;
     if (baseSize + datagram.payload.byteLength <= this.datagramMaxSize) {
       const datagramBytes = serializeDatagram(datagram);
       this.communicator.postMessage({ type: 'sendDatagram', data: datagramBytes });
       return;
     }
+    // If the datagram is too large, we need to fragment it
     const sampleHeader = datagramFragmentInfoToExtensionHeader(0, 0);
     const fragHeaderSize = serializeExtensionHeader(sampleHeader).byteLength;
     const maxPayload = this.datagramMaxSize - baseSize - fragHeaderSize;
@@ -246,7 +386,7 @@ export class Publisher {
         payload: videoChunkBytes,
       };
       Mogger.debug(`Datagram payload size: ${videoChunkBytes.byteLength} bytes`);
-      this.sendDatagramWithFragmentation(datagram);
+      this.sendDatagram(datagram);
     }
   }
 
@@ -325,7 +465,7 @@ export class Publisher {
           extensionHeaders,
           payload: videoChunkBytes
         };
-        this.sendDatagramWithFragmentation(datagram);
+        this.sendDatagram(datagram);
       }
     }
 
@@ -335,6 +475,19 @@ export class Publisher {
         targetTrack.largestObjectId + 1 === targetTrack.encoderConfig.keyFrameDuration) {
       this.sendEndOfGroup(targetTrack.largestGroupId, targetTrack.largestObjectId + 1);
     }
+  }
+
+  private onSubscribeFirstSubscriberSideEffects(track: Track): void {
+    const sideEffectByType: Record<Track['type'], () => void> = {
+      video: () =>
+        this.videoEncoders[track.name].postMessage({ type: 'encode', data: null }),
+      audio: () =>
+        this.audioEncoders[track.name].postMessage({ type: 'encode', data: null }),
+      catalog: () =>
+        this.warpCatalogManager.rebuildCatalog(this.namespace.join('/')),
+    };
+
+    sideEffectByType[track.type]?.();
   }
 
   // ------- Message Handlers for workers -------
@@ -364,12 +517,13 @@ export class Publisher {
       break;
     case `ctrl-${CONTROL_MESSAGE.SUBSCRIBE}`:
       msg = message.data.data as Subscribe;
+      Mogger.info(`Subscribe request for track ${msg.trackName} with subscribeId ${msg.subscribeId} and alias ${msg.trackAlias}`);
       const targetTrack = this.trackManager.getTrack({ name: msg.trackName });
       if (!targetTrack) {
         const sub_err = serializeSubscribeError({
           subscribeId: msg.subscribeId,
           errorCode: SUBSCRIBE_ERROR_REASON.TRACK_DOES_NOT_EXIST,
-          reasonPhrase: '',
+          reasonPhrase: 'Track does not exist',
           trackAlias: msg.trackAlias
         });
         this.communicator.postMessage({ type: 'sendControlMessage', data: sub_err });
@@ -380,15 +534,14 @@ export class Publisher {
       const sub_ok = serializeSubscribeOk({ subscribeId: msg.subscribeId, expires: 0, groupOrder: msg.groupOrder || targetTrack.groupOrderPublisherPreference, contentExists: 0 });
       this.communicator.postMessage({ type: 'sendControlMessage', data: sub_ok });
 
-      if (targetTrack.subscribers.length == 0) {
-        const targetEncoder = targetTrack.type === 'video' ? this.videoEncoders[targetTrack.name] : this.audioEncoders[targetTrack.name];
-        targetEncoder.postMessage({ type: 'encode', data: null });
-      }
+      if (targetTrack.subscribers.length === 0) this.onSubscribeFirstSubscriberSideEffects(targetTrack);
+      if (targetTrack.type === 'catalog') this.publishCatalog(msg.trackAlias);
+
       this.trackManager.addSubscriber({
         name: msg.trackName,
         subscribeId: msg.subscribeId,
         trackAlias: msg.trackAlias,
-        filterType: msg.filterType
+        filterType: msg.filterType,
       });
       Mogger.info(`Initialized subscription for track ${msg.trackName} with subscribeId ${msg.subscribeId} and alias ${msg.trackAlias}`);
       break;
@@ -475,7 +628,7 @@ export class Publisher {
           extensionHeaders: audioChunkMsg.metadata.decoderConfig ? [audioDecoderConfigToExtensionHeader(audioChunkMsg.metadata.decoderConfig)]: [],
           payload: audioChunkBytes,
         };
-        this.sendDatagramWithFragmentation(datagram);
+        this.sendDatagram(datagram);
       }
       audioTrack.largestObjectId++;
       break;
