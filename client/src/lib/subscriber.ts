@@ -4,8 +4,8 @@ import { CONTROL_MESSAGE, deserializeVideoDecoderConfig, LOC_EXTENSION_HEADER_TY
 import type { Subscribe, ServerSetup, SubscribeOk, SubgroupHeader, SubgroupObject, SubscribeError, Datagram } from 'moqtail';
 import { moqVideoTransmissionLatencyStore, ringStats, bitrateStore } from './utils/store';
 
-import { DatagramBuffer, BufferedDatagram } from "./utils/datagramBuffer";
-import { concatUint8Arrays } from "bytes";
+import { DatagramBuffer, BufferedDatagram } from './utils/datagramBuffer';
+import { concatUint8Arrays } from 'bytes';
 
 // @ts-ignore
 import CommunicatorWorker from './threads/communicator.worker?worker';
@@ -34,9 +34,7 @@ export class Subscriber {
   private communicator: Worker;
   private videoGenerator?: MediaStreamTrackGenerator<VideoFrame>;
   private videoWriter?: WritableStreamDefaultWriter<VideoFrame>;
-  
   public warpCatalogManager: WarpCatalogManager = new WarpCatalogManager();
-
   constructor(props: SubscriberInitProps) {
     this.communicator = new CommunicatorWorker();
     this.communicator.onmessage = this.communicatorMessageHandler.bind(this);
@@ -64,7 +62,6 @@ export class Subscriber {
     const msg = serializeUnsubscribe(sub.subscribe.subscribeId);
     this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
   }
-
   private handleCatalogUpdate(payload: Uint8Array) {
     // Handle WARP catalog updates
     const catalog = this.warpCatalogManager.updateCatalogFromData(payload);
@@ -247,7 +244,7 @@ export class Subscriber {
       } else {
         datagramObject.encodedChunkInit = deserializeEncodedChunkFromArray(datagramObject.payload);
       }
-      
+
       if (sub.type === 'video') {
         const buffered: BufferedDatagram = { header: datagramObject.header, encodedChunkInit: datagramObject.encodedChunkInit };
         this.datagramBuffer.enqueue(buffered);
@@ -263,7 +260,7 @@ export class Subscriber {
           break;
         }
         this.audioWaitingForKeyFrame = false;
-        
+
         let audioDecoderConfig = null;
         datagramObject.header.extensionHeaders.map(h => {
           if (h.id !== LOC_EXTENSION_HEADER_TYPE.AUDIO_CONFIG) return;
@@ -272,7 +269,7 @@ export class Subscriber {
             audioDecoderConfig = config;
           });
         });
-        
+
         const audioChunk = new EncodedAudioChunk(datagramObject.encodedChunkInit as EncodedAudioChunkInit);
         this.receivedBytes += (datagramObject.encodedChunkInit as EncodedAudioChunkInit).data.byteLength;
         sub.decoder.postMessage({ type: 'decode', data: { encodedAudioChunk: audioChunk, config: audioDecoderConfig } });
@@ -314,7 +311,6 @@ export class Subscriber {
       break;
     }
   }
-
   private decodeDatagramQueue(queue: BufferedDatagram[], sub: RegisteredSubscription) {
     for (const d of queue) {
       let vConfig: VideoDecoderConfig | null = null;

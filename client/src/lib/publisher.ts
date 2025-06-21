@@ -39,7 +39,7 @@ export class Publisher {
     this.communicator = new CommunicatorWorker();
     this.communicator.onmessage = this.communicatorMessageHandler.bind(this);
     this.communicator.postMessage({ type: 'startConnection', data: props.serverUrl });
-    
+
     // Set trackManager reference in warpCatalogManager
     this.warpCatalogManager.setTrackManager(this.trackManager);
   }
@@ -80,7 +80,6 @@ export class Publisher {
       this.audioEncoders[track.name].postMessage({ type: 'capture', data: processor.readable }, [processor.readable]);
     }
   }
-
   replaceMediaTrack(trackName: string, mediaTrack: MediaStreamTrack) {
     const track = this.trackManager.getTrack({ name: trackName });
     if (!track) {
@@ -149,7 +148,6 @@ export class Publisher {
     });
     this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
   }
-
   // WARP Catalog Methods
   initializeWarpCatalog() {
     // Register catalog track to TrackManager first
@@ -164,12 +162,11 @@ export class Publisher {
       streamCount: 0
     };
     this.trackManager.upsertTrack(catalogTrack);
-    
+
     // Initialize WARP catalog from trackManager (it will read media tracks automatically)
     this.warpCatalogManager.initializeCatalog(this.namespace.join('/'));
     this.publishCatalog();
   }
-
   // Publish the current WARP catalog
   publishCatalog(alias?: number) {
     const catalogData = this.warpCatalogManager.serializeCatalog();
@@ -179,12 +176,10 @@ export class Publisher {
       this.broadcastCatalog(catalogData);
     }
   }
-
   broadcastCatalog(catalogData: Uint8Array) {
     const interestedAliases = this.getAliasOfSubscribersForCatalog();
-    interestedAliases.map(alias => { this.sendCatalog(alias, catalogData) });
+    interestedAliases.map(alias => { this.sendCatalog(alias, catalogData); });
   }
-
   sendCatalog(alias: number, catalogData: Uint8Array) {
     const datagram: Datagram = {
       trackAlias: alias,
@@ -196,7 +191,6 @@ export class Publisher {
     };
     this.sendDatagram(datagram);
   }
-
   private getAliasOfSubscribersForCatalog(): number[] {
     // Find subscribers interested in the catalog track
     const catalogTrack = this.trackManager.getTrack({ name: WARP_CATALOG_TRACK_NAME });
@@ -207,7 +201,6 @@ export class Publisher {
     }
     return [];
   }
-
   addWarpTrack(track: Track) {
     // Track is already added to trackManager via registerTrack()
     // Just ensure catalog track is registered and update catalog
@@ -224,7 +217,7 @@ export class Publisher {
       };
       this.trackManager.upsertTrack(catalogTrack);
     }
-    
+
     // Update catalog (warpCatalogManager will read from trackManager)
     if (this.warpCatalogManager.supportsDeltaUpdates()) {
       const patchData = this.warpCatalogManager.createAddTrackPatch(track.name, this.namespace.join('/'));
@@ -234,7 +227,6 @@ export class Publisher {
       this.publishCatalog();
     }
   }
-
   removeWarpTrack(trackName: string) {
     // Remove track from trackManager and update catalog
     const track = this.trackManager.getTrack({ name: trackName });
@@ -247,7 +239,7 @@ export class Publisher {
 
       // Remove from trackManager (warpCatalogManager will read updated state)
       this.trackManager.removeTrack(trackName);
-      
+
       // Update catalog
       if (this.warpCatalogManager.supportsDeltaUpdates()) {
         const patchData = this.warpCatalogManager.createRemoveTrackPatch(trackName, this.namespace.join('/'));
@@ -260,17 +252,14 @@ export class Publisher {
       }
     }
   }
-
   terminateWarpSession() {
     // Publish terminating catalog (empty tracks)
     const terminatingCatalog = this.warpCatalogManager.createTerminatingCatalog();
     this.broadcastCatalog(terminatingCatalog);
   }
-
   getWarpCatalog() {
     return this.warpCatalogManager.getCurrentCatalog();
   }
-
   getTimeAlignedTracks() {
     return this.warpCatalogManager.getTimeAlignedTracks();
   }
@@ -313,7 +302,6 @@ export class Publisher {
     }
     targetTrack.streamCount++;
   }
-
   private sendDatagram(datagram: Datagram) {
     const baseSize = serializeDatagram({ ...datagram, payload: new Uint8Array(0) }).byteLength;
     if (baseSize + datagram.payload.byteLength <= this.datagramMaxSize) {
@@ -339,29 +327,27 @@ export class Publisher {
       this.communicator.postMessage({ type: 'sendDatagram', data: d });
     }
   }
-
   // Common method to prepare video chunk data
   private prepareVideoChunkData(
     videoChunkMsg: any,
   ): { videoChunkBytes: Uint8Array; extensionHeaders: ExtensionHeader[] } {
     const videoChunkBytes = serializeEncodedChunk(videoChunkMsg.chunk);
-    
+
     let extensionHeaders: ExtensionHeader[] = [];
-    
+
     if (videoChunkMsg.metadata.decoderConfig?.codec === 'avc1.42001e') {
       extensionHeaders = getMiExtensionHeaders(MI_MEDIA_TYPE.H264AVCC, videoChunkMsg.metadata.decoderConfig, videoChunkMsg.chunk, videoChunkMsg.metadata.totalChunkCount);
     } else if (videoChunkMsg.metadata.decoderConfig) {
       extensionHeaders = [videoDecoderConfigToExtensionHeader(videoChunkMsg.metadata.decoderConfig)];
     }
-    
+
     // Add capture timestamp for latency measurement (less frequent)
     if (videoChunkMsg.chunk.timestamp % 4 === 0) { // %4 is just a random number. I want the latency measurement to be less frequent
       extensionHeaders.push(captureTimestampToExtensionHeader(Math.round(performance.timeOrigin) + (performance.now() | 0)));
     }
-    
+
     return { videoChunkBytes, extensionHeaders };
   }
-
   private sendVideoAsDatagram(videoChunkMsg: MoqtailVideoChunkMessage, targetTrack: Track) {
     // if (videoChunkMsg.metadata.frameType === 'key') {
     //   targetTrack.largestGroupId !== undefined ? targetTrack.largestGroupId++ : targetTrack.largestGroupId = 0;
@@ -373,7 +359,7 @@ export class Publisher {
     targetTrack.largestObjectId = 0;
 
     const { videoChunkBytes, extensionHeaders } = this.prepareVideoChunkData(videoChunkMsg);
-    
+
     // Send to interested subscribers
     const interestedAliases = this.getAliasOfSubscribersWithLatestObjectFilter(targetTrack);
     for (const alias of interestedAliases) {
@@ -389,11 +375,10 @@ export class Publisher {
       this.sendDatagram(datagram);
     }
   }
-
   private sendVideoAsStream(videoChunkMsg: MoqtailVideoChunkMessage, targetTrack: Track) {
     const group = targetTrack.groups.find(g => g.groupId === targetTrack.largestGroupId);
     let subgroupId = (videoChunkMsg.metadata.temporalLayerId ?? 0) + (targetTrack.largestGroupId !== undefined ? targetTrack.largestGroupId : 0);
-    
+
     if (videoChunkMsg.metadata.frameType === 'key') {
       // Create new group
       targetTrack.largestGroupId !== undefined ? targetTrack.largestGroupId++ : targetTrack.largestGroupId = 0;
@@ -417,7 +402,7 @@ export class Publisher {
     }
     targetTrack.largestObjectId !== undefined ? targetTrack.largestObjectId++ : targetTrack.largestObjectId = 0;
     const { videoChunkBytes, extensionHeaders } = this.prepareVideoChunkData(videoChunkMsg);
-    
+
     const subgroupObject = serializeSubgroupObject({
       objectId: targetTrack.largestObjectId,
       extensionHeaders,
@@ -431,7 +416,6 @@ export class Publisher {
       this.sendEndOfGroup(subgroupId, targetTrack.largestObjectId + 1);
     }
   }
-
   private sendKeyFrameStream(videoChunkMsg: MoqtailVideoChunkMessage, targetTrack: Track) {
     if (videoChunkMsg.metadata.frameType === 'key') {
       // Start a new group and send key frame over stream
@@ -476,7 +460,6 @@ export class Publisher {
       this.sendEndOfGroup(targetTrack.largestGroupId, targetTrack.largestObjectId + 1);
     }
   }
-
   private onSubscribeFirstSubscriberSideEffects(track: Track): void {
     const sideEffectByType: Record<Track['type'], () => void> = {
       video: () =>
@@ -489,7 +472,6 @@ export class Publisher {
 
     sideEffectByType[track.type]?.();
   }
-
   // ------- Message Handlers for workers -------
   private communicatorMessageHandler(message: MessageEvent) {
     let msg;

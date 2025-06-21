@@ -1,4 +1,4 @@
-import type { Datagram } from "moqtail";
+import type { Datagram } from 'moqtail';
 export interface BufferedDatagram {
   header: Datagram;
   encodedChunkInit: EncodedAudioChunkInit | EncodedVideoChunkInit;
@@ -8,11 +8,9 @@ export class DatagramBuffer {
   private buffer: Map<number, BufferedDatagram[]> = new Map();
   private readyGroups: number[] = [];
   private timestampOffsetMs: number | null = null;
-
   setTimestampOffset(offsetMs: number) {
     this.timestampOffsetMs = offsetMs;
   }
-
   enqueue(datagram: BufferedDatagram) {
     const group = this.buffer.get(datagram.header.groupId) || [];
     group.push(datagram);
@@ -20,14 +18,12 @@ export class DatagramBuffer {
     group.sort((a, b) => (a.header.objectId ?? 0) - (b.header.objectId ?? 0));
     this.buffer.set(datagram.header.groupId, group);
   }
-
   releaseGroup(groupId: number) {
     if (!this.buffer.has(groupId)) return;
     if (!this.readyGroups.includes(groupId)) {
       this.readyGroups.push(groupId);
     }
   }
-
   dequeueReady(nowMs: number): BufferedDatagram[] {
     const out: BufferedDatagram[] = [];
     if (this.timestampOffsetMs === null) return out;
@@ -64,11 +60,9 @@ export class DatagramBuffer {
 
     return out;
   }
-
   hasGroup(groupId: number): boolean {
     return this.buffer.has(groupId);
   }
-
   clear() {
     this.buffer.clear();
     this.readyGroups = [];

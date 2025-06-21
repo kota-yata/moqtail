@@ -25,20 +25,17 @@ export class WarpCatalogManager {
   private catalogUpdateCallbacks: ((catalog: WarpCatalog) => void)[] = [];
   private trackUpdateCallbacks: ((tracks: WarpTrack[]) => void)[] = [];
   private trackManager: TrackManager | null = null;
-
   setTrackManager(trackManager: TrackManager): void {
     this.trackManager = trackManager;
   }
-
   getCurrentCatalog(): WarpCatalog | null {
     return this.currentCatalog;
   }
-
   initializeCatalog(namespace?: string): WarpCatalog {
     if (!this.trackManager) {
       throw new Error('TrackManager not set. Call setTrackManager() first.');
     }
-    
+
     const allTracks = this.trackManager.getAllTracks();
     // Filter out catalog tracks to avoid circular references
     const mediaTracks = allTracks.filter(track => track.type !== 'catalog');
@@ -47,7 +44,6 @@ export class WarpCatalogManager {
     this.notifyCatalogUpdate();
     return this.currentCatalog;
   }
-
   // Convert existing Track to WarpTrack
   public convertTrackToWarpTrack(track: Track, namespace?: string): WarpTrack {
     const warpTrack: WarpTrack = {
@@ -77,7 +73,6 @@ export class WarpCatalogManager {
 
     return warpTrack;
   }
-
   // Update catalog from serialized data (for subscriber)
   updateCatalogFromData(data: Uint8Array): WarpCatalog | null {
     try {
@@ -104,7 +99,6 @@ export class WarpCatalogManager {
     }
     return null;
   }
-
   // Apply JSON patch to current catalog
   private applyPatch(patch: WarpCatalogPatch[]): void {
     if (!this.currentCatalog) {
@@ -116,25 +110,25 @@ export class WarpCatalogManager {
     for (const operation of patch) {
       try {
         switch (operation.op) {
-          case 'add':
-            if (operation.path === '/tracks/-') {
-              // Add track to end of tracks array
-              this.currentCatalog = addTrackToCatalog(this.currentCatalog, operation.value as WarpTrack);
+        case 'add':
+          if (operation.path === '/tracks/-') {
+            // Add track to end of tracks array
+            this.currentCatalog = addTrackToCatalog(this.currentCatalog, operation.value as WarpTrack);
+          }
+          break;
+        case 'remove':
+          if (operation.path.startsWith('/tracks/')) {
+            const index = parseInt(operation.path.split('/')[2]);
+            if (index >= 0 && index < this.currentCatalog.tracks.length) {
+              const trackToRemove = this.currentCatalog.tracks[index];
+              this.currentCatalog = removeTrackFromCatalog(
+                this.currentCatalog,
+                trackToRemove.name,
+                trackToRemove.namespace
+              );
             }
-            break;
-          case 'remove':
-            if (operation.path.startsWith('/tracks/')) {
-              const index = parseInt(operation.path.split('/')[2]);
-              if (index >= 0 && index < this.currentCatalog.tracks.length) {
-                const trackToRemove = this.currentCatalog.tracks[index];
-                this.currentCatalog = removeTrackFromCatalog(
-                  this.currentCatalog, 
-                  trackToRemove.name, 
-                  trackToRemove.namespace
-                );
-              }
-            }
-            break;
+          }
+          break;
           // Add more patch operations as needed
         }
       } catch (error) {
@@ -144,18 +138,17 @@ export class WarpCatalogManager {
 
     this.notifyCatalogUpdate();
   }
-
   // Rebuild catalog from current tracks in trackManager
   rebuildCatalog(namespace?: string): void {
     if (!this.trackManager) {
       throw new Error('TrackManager not set. Call setTrackManager() first.');
     }
-    
+
     const allTracks = this.trackManager.getAllTracks();
     // Filter out catalog tracks to avoid circular references
     const mediaTracks = allTracks.filter(track => track.type !== 'catalog');
     const warpTracks: WarpTrack[] = mediaTracks.map(track => this.convertTrackToWarpTrack(track, namespace));
-    
+
     if (warpTracks.length === 0) {
       this.currentCatalog = createTerminatingCatalog();
     } else {
@@ -163,31 +156,25 @@ export class WarpCatalogManager {
     }
     this.notifyCatalogUpdate();
   }
-
   addTrack(trackName: string, namespace?: string): void {
     this.rebuildCatalog(namespace);
   }
-
   removeTrack(trackName: string, namespace?: string): void {
     this.rebuildCatalog(namespace);
   }
-
   // Get tracks by render group (time-aligned tracks)
   getTimeAlignedTracks(): WarpTrack[][] {
     if (!this.currentCatalog) return [];
     return getTimeAlignedTracks(this.currentCatalog);
   }
-
   getTracksByRenderGroup(renderGroup: number): WarpTrack[] {
     if (!this.currentCatalog) return [];
     return getTracksByRenderGroup(this.currentCatalog, renderGroup);
   }
-
   getTracksByAltGroup(altGroup: number): WarpTrack[] {
     if (!this.currentCatalog) return [];
     return getTracksByAltGroup(this.currentCatalog, altGroup);
   }
-
   getAvailableRenderGroups(): number[] {
     if (!this.currentCatalog) return [];
     const groups = new Set<number>();
@@ -198,7 +185,6 @@ export class WarpCatalogManager {
     });
     return Array.from(groups).sort();
   }
-
   getAvailableAltGroups(): number[] {
     if (!this.currentCatalog) return [];
     const groups = new Set<number>();
@@ -209,13 +195,11 @@ export class WarpCatalogManager {
     });
     return Array.from(groups).sort();
   }
-
   // Serialize current catalog for transmission
   serializeCatalog(): Uint8Array | null {
     if (!this.currentCatalog) return null;
     return serializeWarpCatalog(this.currentCatalog);
   }
-
   // Create patch for track addition (rebuilds catalog and creates full update)
   createAddTrackPatch(trackName: string, namespace?: string): Uint8Array {
     // For now, just rebuild the entire catalog
@@ -223,7 +207,6 @@ export class WarpCatalogManager {
     this.rebuildCatalog(namespace);
     return this.serializeCatalog() || new Uint8Array(0);
   }
-
   // Create patch for track removal (rebuilds catalog and creates full update)
   createRemoveTrackPatch(trackName: string, namespace?: string): Uint8Array | null {
     // For now, just rebuild the entire catalog
@@ -231,21 +214,17 @@ export class WarpCatalogManager {
     this.rebuildCatalog(namespace);
     return this.serializeCatalog();
   }
-
   createTerminatingCatalog(): Uint8Array {
     this.currentCatalog = createTerminatingCatalog();
     this.notifyCatalogUpdate();
     return serializeWarpCatalog(this.currentCatalog);
   }
-
   onCatalogUpdate(callback: (catalog: WarpCatalog) => void): void {
     this.catalogUpdateCallbacks.push(callback);
   }
-
   onTrackUpdate(callback: (tracks: WarpTrack[]) => void): void {
     this.trackUpdateCallbacks.push(callback);
   }
-
   // Notify all callbacks of catalog update
   private notifyCatalogUpdate(): void {
     if (this.currentCatalog) {
@@ -253,22 +232,18 @@ export class WarpCatalogManager {
       this.trackUpdateCallbacks.forEach(callback => callback(this.currentCatalog!.tracks));
     }
   }
-
   getTrack(trackName: string, namespace?: string): WarpTrack | undefined {
     if (!this.currentCatalog) return undefined;
-    return this.currentCatalog.tracks.find(track => 
+    return this.currentCatalog.tracks.find(track =>
       track.name === trackName && (track.namespace || '') === (namespace || '')
     );
   }
-
   supportsDeltaUpdates(): boolean {
     return this.currentCatalog?.supportsDeltaUpdates ?? false;
   }
-
   getAllTracks(): WarpTrack[] {
     return this.currentCatalog?.tracks ?? [];
   }
-
   clear(): void {
     this.currentCatalog = null;
     this.catalogUpdateCallbacks.forEach(callback => callback(null as any));
