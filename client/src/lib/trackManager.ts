@@ -9,14 +9,19 @@ export class TrackManager {
       this.tracks.push(track);
     }
   }
-  public addTracks(tracks: Track[]) {
-    this.tracks.push(...tracks);
-  }
   public getTrack({ name }: { name: string }): Track | undefined {
     return this.tracks.find(track => track.name === name);
   }
   public getAllTracks() {
     return this.tracks;
+  }
+  public removeTrack(name: string): boolean {
+    const index = this.tracks.findIndex(track => track.name === name);
+    if (index !== -1) {
+      this.tracks.splice(index, 1);
+      return true;
+    }
+    return false;
   }
   public addSubscriber({ name, subscribeId, trackAlias, filterType }: { name: string, subscribeId: number, trackAlias: number, filterType: SUBSCRIBE_FILTER }) {
     const track = this.getTrack({ name });

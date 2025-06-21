@@ -1,10 +1,11 @@
 import { Mogger } from './utils/mogger';
-import { CONTROL_MESSAGE, deserializeVideoDecoderConfig, LOC_EXTENSION_HEADER_TYPE, MOQT_DRAFT08_VERSION, MOQT_DRAFT09_VERSION, MOQT_DRAFT10_VERSION, serializeClientSetup, serializeSubscribe, STREAM, deserializeAudioDecoderConfig, serializeUnsubscribe, OBJECT_STATUS, deserializeDatagramFragmentInfo, deserializeEncodedChunkFromArray } from 'moqtail';
+import { WarpCatalogManager } from './warpCatalogManager';
+import { CONTROL_MESSAGE, deserializeVideoDecoderConfig, LOC_EXTENSION_HEADER_TYPE, MOQT_DRAFT08_VERSION, MOQT_DRAFT09_VERSION, MOQT_DRAFT10_VERSION, serializeClientSetup, serializeSubscribe, STREAM, deserializeAudioDecoderConfig, serializeUnsubscribe, OBJECT_STATUS, deserializeDatagramFragmentInfo, deserializeEncodedChunkFromArray, WARP_CATALOG_TRACK_NAME } from 'moqtail';
 import type { Subscribe, ServerSetup, SubscribeOk, SubgroupHeader, SubgroupObject, SubscribeError, Datagram } from 'moqtail';
 import { moqVideoTransmissionLatencyStore, ringStats, bitrateStore } from './utils/store';
 
-import { DatagramBuffer, BufferedDatagram } from "./utils/datagramBuffer";
-import { concatUint8Arrays } from "bytes";
+import { DatagramBuffer, BufferedDatagram } from './utils/datagramBuffer';
+import { concatUint8Arrays } from 'bytes';
 
 // @ts-ignore
 import CommunicatorWorker from './threads/communicator.worker?worker';
@@ -33,6 +34,7 @@ export class Subscriber {
   private communicator: Worker;
   private videoGenerator?: MediaStreamTrackGenerator<VideoFrame>;
   private videoWriter?: WritableStreamDefaultWriter<VideoFrame>;
+  public warpCatalogManager: WarpCatalogManager = new WarpCatalogManager();
   constructor(props: SubscriberInitProps) {
     this.communicator = new CommunicatorWorker();
     this.communicator.onmessage = this.communicatorMessageHandler.bind(this);
@@ -47,7 +49,7 @@ export class Subscriber {
     const msg = serializeClientSetup({ supportedVersions: this.supportedVersions });
     this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
   }
-  subscribe(props: Subscribe, trackType: 'video' | 'audio') {
+  subscribe(props: Subscribe, trackType: TrackType) {
     const msg = serializeSubscribe(props);
     this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
     const decoder: Worker = trackType === 'video' ? new VideoDecoderWorker() : new AudioDecoderWorker();
@@ -59,6 +61,13 @@ export class Subscriber {
     const sub = this.subscription.find(s => s.subscribe.trackName === trackName);
     const msg = serializeUnsubscribe(sub.subscribe.subscribeId);
     this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
+  }
+  private handleCatalogUpdate(payload: Uint8Array) {
+    // Handle WARP catalog updates
+    const catalog = this.warpCatalogManager.updateCatalogFromData(payload);
+    if (catalog) {
+      Mogger.info(`WARP catalog updated with ${catalog.tracks.length} tracks`);
+    }
   }
   stopAudio() {
     if (this.audioNode) {
@@ -203,6 +212,13 @@ export class Subscriber {
 
       sub = this.getSubscriptionByTrackAlias(datagramObject.header.trackAlias);
 
+      // Check if this is a catalog track
+      if (sub.subscribe.trackName === WARP_CATALOG_TRACK_NAME) {
+        // Handle WARP catalog update
+        this.handleCatalogUpdate(datagramObject.payload);
+        break;
+      }
+
       const fragIndex = datagramObject.header.extensionHeaders.findIndex(h => h.id === LOC_EXTENSION_HEADER_TYPE.DATAGRAM_FRAGMENT_INFO);
       if (fragIndex !== -1) {
         const info = deserializeDatagramFragmentInfo(datagramObject.header.extensionHeaders[fragIndex].value as Uint8Array);
@@ -228,7 +244,7 @@ export class Subscriber {
       } else {
         datagramObject.encodedChunkInit = deserializeEncodedChunkFromArray(datagramObject.payload);
       }
-      
+
       if (sub.type === 'video') {
         const buffered: BufferedDatagram = { header: datagramObject.header, encodedChunkInit: datagramObject.encodedChunkInit };
         this.datagramBuffer.enqueue(buffered);
@@ -238,13 +254,13 @@ export class Subscriber {
           const ready = this.datagramBuffer.dequeueReady(performance.now());
           this.decodeDatagramQueue(ready, sub);
         }
-      } else {
+      } else if (sub.type === 'audio') {
         if (this.audioWaitingForKeyFrame && datagramObject.encodedChunkInit.type !== 'key') {
           Mogger.debug('Waiting for audio key frame...');
           break;
         }
         this.audioWaitingForKeyFrame = false;
-        
+
         let audioDecoderConfig = null;
         datagramObject.header.extensionHeaders.map(h => {
           if (h.id !== LOC_EXTENSION_HEADER_TYPE.AUDIO_CONFIG) return;
@@ -253,7 +269,7 @@ export class Subscriber {
             audioDecoderConfig = config;
           });
         });
-        
+
         const audioChunk = new EncodedAudioChunk(datagramObject.encodedChunkInit as EncodedAudioChunkInit);
         this.receivedBytes += (datagramObject.encodedChunkInit as EncodedAudioChunkInit).data.byteLength;
         sub.decoder.postMessage({ type: 'decode', data: { encodedAudioChunk: audioChunk, config: audioDecoderConfig } });
@@ -295,7 +311,6 @@ export class Subscriber {
       break;
     }
   }
-
   private decodeDatagramQueue(queue: BufferedDatagram[], sub: RegisteredSubscription) {
     for (const d of queue) {
       let vConfig: VideoDecoderConfig | null = null;

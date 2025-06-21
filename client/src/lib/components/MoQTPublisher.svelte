@@ -103,6 +103,7 @@
   const startStreaming = () => {
     if (!publisherInit) return;
     publisher.announce(namespace);
+    
     const vt = stream.getVideoTracks()[0];
     const videoEncoderConfig = {
       ...videoEncoders[videoEncoderChoice],
@@ -118,6 +119,7 @@
       subscribers: [],
       groups: [],
     };
+    
     const at = stream.getAudioTracks()[0];
     const settings = at.getSettings ? at.getSettings() : {};
     const audioEncoderConfig = {
@@ -137,6 +139,14 @@
       largestGroupId: -1,
       largestObjectId: -1,
     };
+
+    // Add tracks using WARP-aware methods
+    publisher.addWarpTrack(videoTrack);
+    publisher.addWarpTrack(audioTrack);
+    
+    // Initialize and publish WARP catalog
+    publisher.initializeWarpCatalog();
+    
     Mogger.info(`Streaming ${vt.label}`);
     publisher.startStream({ track: videoTrack, mediaTrack: vt });
     Mogger.info(`Streaming ${at.label}`);
@@ -144,6 +154,14 @@
   };
   const stopStreaming = () => {
     if (!publisherInit) return;
+    
+    // Remove tracks using WARP-aware methods
+    publisher.removeWarpTrack(videoTrackName);
+    publisher.removeWarpTrack(audioTrackName);
+    
+    // Terminate WARP session
+    publisher.terminateWarpSession();
+    
     publisher.stopStream(videoTrackName);
     publisher.stopStream(audioTrackName);
     // publisher.unannounce(namespace);

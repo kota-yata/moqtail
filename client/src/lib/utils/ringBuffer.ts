@@ -1,4 +1,4 @@
-import { Mogger } from "./mogger";
+import { Mogger } from './mogger';
 
 /**
  * A circular buffer implementation for Float32 audio data.
@@ -7,15 +7,13 @@ import { Mogger } from "./mogger";
 export class Float32RingBuffer {
   private buffer: Float32Array;
   private capacity: number;
-  private size: number = 0;  // Current amount of data in buffer
-  private writePos: number = 0;
-  private readPos: number = 0;
-
+  private size = 0; // Current amount of data in buffer
+  private writePos = 0;
+  private readPos = 0;
   constructor(capacity: number) {
     this.capacity = capacity;
     this.buffer = new Float32Array(capacity);
   }
-
   /**
    * Get current buffer statistics
    */
@@ -29,35 +27,30 @@ export class Float32RingBuffer {
       free: this.free()
     };
   }
-
   /**
    * Get the amount of data available to read
    */
   available(): number {
     return this.size;
   }
-
   /**
    * Get the amount of free space in the buffer
    */
   free(): number {
     return this.capacity - this.size;
   }
-
   /**
    * Check if buffer is full
    */
   isFull(): boolean {
     return this.size === this.capacity;
   }
-
   /**
    * Check if buffer is empty
    */
   isEmpty(): boolean {
     return this.size === 0;
   }
-
   /**
    * Write data to the buffer
    * @param data The data to write
@@ -68,20 +61,20 @@ export class Float32RingBuffer {
 
     const freeSpace = this.free();
     if (freeSpace === 0) {
-      Mogger.warn("Ring buffer is full, cannot write data");
+      Mogger.warn('Ring buffer is full, cannot write data');
       return 0;
     }
 
     // Determine how much we can actually write
     const toWrite = Math.min(data.length, freeSpace);
-    
+
     if (toWrite < data.length) {
       Mogger.warn(`Buffer has space for ${toWrite} samples, but ${data.length} were provided. Truncating.`);
     }
 
     // Write the data in up to two parts (before and after wrap-around)
     let written = 0;
-    
+
     // First part: from writePos to end of buffer
     const firstPartSize = Math.min(toWrite, this.capacity - this.writePos);
     if (firstPartSize > 0) {
@@ -101,7 +94,6 @@ export class Float32RingBuffer {
     this.size += written;
     return written;
   }
-
   /**
    * Read data from the buffer
    * @param length The number of samples to read
@@ -114,7 +106,7 @@ export class Float32RingBuffer {
 
     // Determine how much we can actually read
     const toRead = Math.min(length, this.size);
-    
+
     if (toRead < length) {
       Mogger.debug(`Requested ${length} samples but only ${toRead} available`);
     }
@@ -142,7 +134,6 @@ export class Float32RingBuffer {
     this.size -= readCount;
     return result;
   }
-
   /**
    * Peek at data without removing it from the buffer
    * @param length The number of samples to peek
@@ -174,7 +165,6 @@ export class Float32RingBuffer {
 
     return result;
   }
-
   /**
    * Skip/discard a number of samples without reading them
    * @param length The number of samples to skip
@@ -186,7 +176,6 @@ export class Float32RingBuffer {
     this.size -= toSkip;
     return toSkip;
   }
-
   /**
    * Clear the buffer
    */
@@ -196,7 +185,6 @@ export class Float32RingBuffer {
     this.readPos = 0;
     this.size = 0;
   }
-
   /**
    * Write data to buffer with overflow handling
    * If buffer is full, old data will be overwritten

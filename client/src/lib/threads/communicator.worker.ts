@@ -74,7 +74,7 @@ class MoQTCommunicator {
       Mogger.debug('Stream created');
     } catch (err) {
       postMessage({ type: 'error', data: `Error creating subgroup stream: ${err}` });
-      return;
+
     }
   }
   async sendObject({ subgroupObject, subgroupId, isLast }: { subgroupObject: Uint8Array, subgroupId: number, isLast?: boolean }) {
