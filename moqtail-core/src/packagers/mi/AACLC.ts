@@ -21,7 +21,7 @@ export const AACLCBitstreamToExtensionHeader = (props: AACLCBitstream): Extensio
   const duration = serializeQuicVarInt(props.duration);
   const wallclock = serializeQuicVarInt(props.wallclock);
   const data = concatUint8Arrays([seqId, pts, timebase, sampleFreq, numChannels, duration, wallclock]);
-  return { id: MI_EXTENSION_HEADER_TYPE.AACLC_BITSTREAM, value: data };
+  return { type: MI_EXTENSION_HEADER_TYPE.AACLC_BITSTREAM, value: data };
 }
 
 export const deserializeAACLCBitstream = async (reader: ReadableStream): Promise<AACLCBitstream> => {

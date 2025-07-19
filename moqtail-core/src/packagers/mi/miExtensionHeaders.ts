@@ -26,7 +26,7 @@ export type MI_MEDIA_TYPE = ObjectValueList<typeof MI_MEDIA_TYPE>;
 export const getMiExtensionHeaders = (type: MI_MEDIA_TYPE, config: VideoDecoderConfig | AudioDecoderConfig, chunk: EncodedVideoChunk | EncodedAudioChunk, seqId?: number): ExtensionHeader[] => {
   let ret: ExtensionHeader[] = [];
   ret.push({
-    id: MI_EXTENSION_HEADER_TYPE.MEDIA_TYPE,
+    type: MI_EXTENSION_HEADER_TYPE.MEDIA_TYPE,
     value: serializeQuicVarInt(type)
   });
   switch (type) {

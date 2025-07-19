@@ -19,7 +19,7 @@ export const H264AVCCMetadataToExtensionHeader = (props: H264AVCCMetadata): Exte
   const durationBytes = serializeQuicVarInt(props.duration);
   const wallclockBytes = serializeQuicVarInt(props.wallclock);
   const data = concatUint8Arrays([seqIdBytes, ptsBytes, dtsBytes, timebaseBytes, durationBytes, wallclockBytes]);
-  return { id: MI_EXTENSION_HEADER_TYPE.H264AVCC_METADATA, value: data };
+  return { type: MI_EXTENSION_HEADER_TYPE.H264AVCC_METADATA, value: data };
 }
 
 export const deserializeH264AVCCMetadata = async (controlReader: ReadableStream): Promise<H264AVCCMetadata> => {
@@ -33,7 +33,7 @@ export const deserializeH264AVCCMetadata = async (controlReader: ReadableStream)
 }
 
 export const H264AVCCExtraDataToExtensionHeader = (props: ArrayBuffer): ExtensionHeader => {
-  return { id: MI_EXTENSION_HEADER_TYPE.H264AVCC_EXTRA_DATA, value: new Uint8Array(props) };
+  return { type: MI_EXTENSION_HEADER_TYPE.H264AVCC_EXTRA_DATA, value: new Uint8Array(props) };
 }
 
 // type AVCDecoderConfigurationRecord = {

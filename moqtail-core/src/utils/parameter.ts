@@ -1,5 +1,6 @@
 import { CONTROL_MESSAGE, PARAMETER } from "../constants";
-import { concatUint8Arrays, getQuicVarIntLength, serializeQuicVarInt, stringToVarBytes, varBytesToString, deserializeQuicVarInt } from 'bytes';
+import { concatUint8Arrays, serializeQuicVarInt, deserializeQuicVarInt } from 'bytes';
+import { serializeKeyValuePair, deserializeKeyValuePair, type KeyValuePair } from './keyValuePair';
 
 export interface Parameter {
   type: number,
@@ -8,16 +9,26 @@ export interface Parameter {
 
 export const serializeParams = (params: Parameter[]): Uint8Array => {
   const serialized = params.map(param => {
-    const type = serializeQuicVarInt(param.type);
-    let len: Uint8Array = new Uint8Array(0);
-    let value: Uint8Array;
-    if (typeof param.value === 'string') {
-      value = stringToVarBytes(param.value);
+    // Convert Parameter to KeyValuePair format
+    let keyValuePair: KeyValuePair;
+    
+    if (param.type % 2 === 0) {
+      // Even type: value should be a number (varint)
+      if (typeof param.value !== 'number') {
+        throw new Error(`Even parameter type ${param.type} requires number value`);
+      }
+      keyValuePair = { type: param.type, value: param.value };
     } else {
-      len = serializeQuicVarInt(getQuicVarIntLength(param.value));
-      value = serializeQuicVarInt(param.value);
+      // Odd type: value should be a string/bytes with length prefix
+      if (typeof param.value !== 'string') {
+        throw new Error(`Odd parameter type ${param.type} requires string value`);
+      }
+      const encoder = new TextEncoder();
+      const valueBytes = encoder.encode(param.value);
+      keyValuePair = { type: param.type, value: valueBytes };
     }
-    return concatUint8Arrays([type, len, value]);
+    
+    return serializeKeyValuePair(keyValuePair);
   });
   const numParams = serializeQuicVarInt(params.length);
   return concatUint8Arrays([numParams, ...serialized]);
@@ -26,37 +37,50 @@ export const serializeParams = (params: Parameter[]): Uint8Array => {
 export const deserializeParams = async (messageType: number, controlReader: ReadableStream): Promise<Parameter[]> => {
   const ret: Parameter[] = [];
   const numParams = await deserializeQuicVarInt(controlReader);
+  
   for (let i = 0; i < numParams; i++) {
-    const paramId = await deserializeQuicVarInt(controlReader);
+    // Deserialize using Key-Value-Pair format
+    const keyValuePair = await deserializeKeyValuePair(controlReader);
+    
+    // Convert KeyValuePair back to Parameter format
+    let parameter: Parameter;
+    
+    if (keyValuePair.type % 2 === 0) {
+      // Even type: value is a number
+      if (typeof keyValuePair.value !== 'number') {
+        throw new Error(`Even parameter type ${keyValuePair.type} should have number value`);
+      }
+      parameter = { type: keyValuePair.type, value: keyValuePair.value };
+    } else {
+      // Odd type: value is bytes, convert to string
+      if (!(keyValuePair.value instanceof Uint8Array)) {
+        throw new Error(`Odd parameter type ${keyValuePair.type} should have Uint8Array value`);
+      }
+      const decoder = new TextDecoder('utf-8');
+      const stringValue = decoder.decode(keyValuePair.value);
+      parameter = { type: keyValuePair.type, value: stringValue };
+    }
+    
+    // Validate known parameter types
     if (messageType === CONTROL_MESSAGE.CLIENT_SETUP || messageType === CONTROL_MESSAGE.SERVER_SETUP) {
-      switch (paramId) {
+      switch (keyValuePair.type) {
         case PARAMETER.SETUP.PATH.KEY:
-          ret.push({ type: PARAMETER.SETUP.PATH.KEY, value: await varBytesToString(controlReader) });
-          break;
-        case PARAMETER.SETUP.MAX_SUBSCRIBE_ID.KEY:
-          await deserializeQuicVarInt(controlReader); // length
-          ret.push({ type: PARAMETER.SETUP.MAX_SUBSCRIBE_ID.KEY, value: await deserializeQuicVarInt(controlReader) });
-          break
+        case PARAMETER.SETUP.MAX_REQUEST_ID.KEY:
         case PARAMETER.SETUP.MAX_AUTH_TOKEN_CACHE_SIZE.KEY:
+          ret.push(parameter);
           break;
         default:
-          throw new Error(`unexpected setup parameter ${paramId}`); // TODO: ProtocolViolation
+          throw new Error(`unexpected setup parameter ${keyValuePair.type}`); // TODO: ProtocolViolation
       }
     } else {
-      switch (paramId) {
+      switch (keyValuePair.type) {
         case PARAMETER.AUTHORIZATION_INFO.KEY:
-          ret.push({ type: PARAMETER.AUTHORIZATION_INFO.KEY, value: await varBytesToString(controlReader) });
-          break;
         case PARAMETER.DELIVERY_TIMOUT.KEY:
-          await deserializeQuicVarInt(controlReader); // length
-          ret.push({ type: PARAMETER.DELIVERY_TIMOUT.KEY, value: await deserializeQuicVarInt(controlReader) });
-          break;
         case PARAMETER.MAX_CACHE_DURATION.KEY:
-          await deserializeQuicVarInt(controlReader); // length
-          ret.push({ type: PARAMETER.MAX_CACHE_DURATION.KEY, value: await deserializeQuicVarInt(controlReader) });
+          ret.push(parameter);
           break;
         default:
-          throw new Error(`unexpected parameter ${paramId}`); // TODO: ProtocolViolation
+          throw new Error(`unexpected parameter ${keyValuePair.type}`); // TODO: ProtocolViolation
       }
     }
   }

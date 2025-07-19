@@ -1,15 +1,16 @@
 import { serializeQuicVarInt, concatUint8Arrays, deserializeQuicVarInt } from 'bytes';
 import { CONTROL_MESSAGE } from '../constants';
+import { getUint16, setUint16 } from 'bytes';
 
-export const serializeFetchCancel = (subscribeId: number) => {
+export const serializeFetchCancel = (requestId: number) => {
   const messageTypeBytes = serializeQuicVarInt(CONTROL_MESSAGE.FETCH_CANCEL);
-  const subscribeIdBytes = serializeQuicVarInt(subscribeId);
-  const length = serializeQuicVarInt(subscribeIdBytes.byteLength);
-  return concatUint8Arrays([messageTypeBytes, length, subscribeIdBytes]);
+  const requestIdBytes = serializeQuicVarInt(requestId);
+  const length = setUint16(requestIdBytes.byteLength);
+  return concatUint8Arrays([messageTypeBytes, length, requestIdBytes]);
 }
 
 export const deserializeFetchCancel = async (controlReader: ReadableStream) => {
-  await deserializeQuicVarInt(controlReader); // length
-  const subscribeId = await deserializeQuicVarInt(controlReader);
-  return { subscribeId };
+  await getUint16(controlReader); // length
+  const requestId = await deserializeQuicVarInt(controlReader);
+  return { requestId };
 }

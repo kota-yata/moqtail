@@ -1,29 +1,29 @@
 import { serializeQuicVarInt, stringToVarBytes, concatUint8Arrays, deserializeQuicVarInt, varBytesToString } from 'bytes';
 import { CONTROL_MESSAGE, TRACK_STATUS_CODE } from '../constants';
-import { deserializeNamespace } from '../utils/namespace';
+import { deserializeNamespace, validateFullTrackName } from '../utils/namespace';
+import { getUint16, setUint16 } from 'bytes';
+import { serializeParams, deserializeParams, type Parameter } from '../utils/parameter';
+import { serializeLocation, deserializeLocation, type Location } from '../utils/location';
 
-export const serializeTrackStatus = (props: { trackNamespace: string[], trackName: string, statusCode: TRACK_STATUS_CODE, lastGroupId: number, lastObjectId: number }) => {
+export const serializeTrackStatus = (props: { requestId: number, statusCode: TRACK_STATUS_CODE, largestLocation: Location, parameters?: Parameter[] }) => {
   const messageTypeBytes = serializeQuicVarInt(CONTROL_MESSAGE.TRACK_STATUS);
-  const trackNamespaceLength = serializeQuicVarInt(props.trackNamespace.length);
-  const trackNamespaceBytes = props.trackNamespace.map(stringToVarBytes);
-  const trackNameBytes = stringToVarBytes(props.trackName);
+  const requestIdBytes = serializeQuicVarInt(props.requestId);
   const statusCodeBytes = serializeQuicVarInt(props.statusCode);
-  const lastGroupIdBytes = serializeQuicVarInt(props.lastGroupId);
-  const lastObjectIdBytes = serializeQuicVarInt(props.lastObjectId);
-  const body = concatUint8Arrays([trackNamespaceLength, ...trackNamespaceBytes, trackNameBytes, statusCodeBytes, lastGroupIdBytes, lastObjectIdBytes]);
-  const length = serializeQuicVarInt(body.byteLength);
+  const largestLocationBytes = serializeLocation(props.largestLocation);
+  const parametersBytes = serializeParams(props.parameters || []);
+  const body = concatUint8Arrays([requestIdBytes, statusCodeBytes, largestLocationBytes, parametersBytes]);
+  const length = setUint16(body.byteLength);
   return concatUint8Arrays([messageTypeBytes, length, body]);
 }
 
 export const deserializeTrackStatus = async (controlReader: ReadableStream) => {
-  await deserializeQuicVarInt(controlReader); // length
-  const trackNamespace = await deserializeNamespace(controlReader);
-  const trackName = await varBytesToString(controlReader);
+  await getUint16(controlReader); // length
+  const requestId = await deserializeQuicVarInt(controlReader);
   const statusCode = await deserializeQuicVarInt(controlReader) as TRACK_STATUS_CODE;
   if (!Object.values(TRACK_STATUS_CODE).includes(statusCode)) {
     throw new Error(`Invalid Track Status Code: ${statusCode}`);
   }
-  const lastGroupId = await deserializeQuicVarInt(controlReader);
-  const lastObjectId = await deserializeQuicVarInt(controlReader);
-  return { trackNamespace, trackName, statusCode, lastGroupId, lastObjectId };
+  const largestLocation = await deserializeLocation(controlReader);
+  const parameters = await deserializeParams(CONTROL_MESSAGE.TRACK_STATUS, controlReader);
+  return { requestId, statusCode, largestLocation, parameters };
 }

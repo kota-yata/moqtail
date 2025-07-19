@@ -63,7 +63,7 @@ export const videoDecoderConfigToExtensionHeader = (config: VideoDecoderConfig):
   const codecDescBytes = desc ? new Uint8Array(desc) : new Uint8Array(0);
   const codecDescLengthBytes = serializeQuicVarInt(codecDescBytes.byteLength);
   const data = concatUint8Arrays([codecBytes, widthBytes, heightBytes, displayAspectWidthBytes, displayAspectHeightBytes, colorSpaceBytes, hardwareAccelerationBytes, codecDescLengthBytes, codecDescBytes]);
-  return { id: LOC_EXTENSION_HEADER_TYPE.VIDEO_CONFIG, value: data };
+  return { type: LOC_EXTENSION_HEADER_TYPE.VIDEO_CONFIG, value: data };
 }
 
 // export const deserializeVideoDecoderConfig = async (readableStream: ReadableStream): Promise<VideoDecoderConfig> => {
@@ -128,7 +128,7 @@ export const audioDecoderConfigToExtensionHeader = (config: AudioDecoderConfig):
   const sampleRateBytes = serializeQuicVarInt(config.sampleRate);
   const channelCountBytes = serializeQuicVarInt(config.numberOfChannels);
   const data = concatUint8Arrays([codecBytes, sampleRateBytes, channelCountBytes]);
-  return { id: LOC_EXTENSION_HEADER_TYPE.AUDIO_CONFIG, value: data };
+  return { type: LOC_EXTENSION_HEADER_TYPE.AUDIO_CONFIG, value: data };
 }
 
 export const deserializeAudioDecoderConfig = async (readableStream: ReadableStream): Promise<AudioDecoderConfig> => {
@@ -140,7 +140,7 @@ export const deserializeAudioDecoderConfig = async (readableStream: ReadableStre
 }
 
 export const captureTimestampToExtensionHeader = (timestamp: number): ExtensionHeader => {
-  return { id: LOC_EXTENSION_HEADER_TYPE.CAPTURE_TIMESTAMP, value: timestamp };
+  return { type: LOC_EXTENSION_HEADER_TYPE.CAPTURE_TIMESTAMP, value: timestamp };
 }
 
 export const deserializeCaptureTimestamp = (buff: Uint8Array): number => {
@@ -155,7 +155,7 @@ export const datagramFragmentInfoToExtensionHeader = (
   const indexBytes = serializeQuicVarInt(fragmentIndex);
   const totalBytes = serializeQuicVarInt(totalFragments);
   const data = concatUint8Arrays([indexBytes, totalBytes]);
-  return { id: LOC_EXTENSION_HEADER_TYPE.DATAGRAM_FRAGMENT_INFO, value: data };
+  return { type: LOC_EXTENSION_HEADER_TYPE.DATAGRAM_FRAGMENT_INFO, value: data };
 };
 
 export const deserializeDatagramFragmentInfo = (

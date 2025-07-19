@@ -21,7 +21,7 @@ export const opusBitstreamToExtensionHeader = (props: OpusBitstream): ExtensionH
   const duration = serializeQuicVarInt(props.duration);
   const wallclock = serializeQuicVarInt(props.wallclock);
   const data = concatUint8Arrays([seqId, pts, timebase, sampleFreq, numChannels, duration, wallclock]);
-  return { id: MI_EXTENSION_HEADER_TYPE.OPUS_BITSTREAM, value: data };
+  return { type: MI_EXTENSION_HEADER_TYPE.OPUS_BITSTREAM, value: data };
 }
 
 export const deserializeOpusBitstream = async (reader: ReadableStream): Promise<OpusBitstream> => {

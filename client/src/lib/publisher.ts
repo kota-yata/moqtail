@@ -1,7 +1,7 @@
 // main thread for publisher
 // interaction with the component page: video/audio start, stop, pause, resume,
 import {
-  CONTROL_MESSAGE, MOQT_DRAFT10_VERSION, PARAMETER,
+  CONTROL_MESSAGE, MOQT_DRAFT11_VERSION, PARAMETER,
   serializeAnnounce, serializeClientSetup, serializeSubgroupHeader, serializeSubscribeError, serializeSubscribeOk,
   serializeUnannounce, SUBSCRIBE_ERROR_REASON, SUBSCRIBE_FILTER, serializeSubgroupObject, serializeEncodedChunk,
   videoDecoderConfigToExtensionHeader, OBJECT_STATUS, serializeDatagram, audioDecoderConfigToExtensionHeader,
@@ -30,11 +30,13 @@ export class Publisher {
   private audioEncoders: { [key: string]: Worker } = {};
   private trackManager: TrackManager = new TrackManager();
   private warpCatalogManager: WarpCatalogManager = new WarpCatalogManager();
-  private supportedVersions = [MOQT_DRAFT10_VERSION];
+  private supportedVersions = [MOQT_DRAFT11_VERSION];
   private selectedVersion = 0;
-  private maxSubscribeId = 1000;
+  private maxRequestId = 1000;
+  private currentRequestId = -2; // Will become 0 after first increment
   private datagramMaxSize = 1024;
   private namespace: string[] = [];
+  private requestIdToNamespace: Map<number, string[]> = new Map();
   constructor(props: PublisherInitProps) {
     this.communicator = new CommunicatorWorker();
     this.communicator.onmessage = this.communicatorMessageHandler.bind(this);
@@ -116,8 +118,8 @@ export class Publisher {
     encoder.postMessage({ type: 'stop', data: null });
     encoder.terminate();
     track.subscribers.forEach(sub => {
-      this.subscribeDone(sub.subscribeId, track);
-      this.trackManager.removeSubscriber(sub.subscribeId);
+      this.subscribeDone(sub.requestId, track);
+      this.trackManager.removeSubscriber(sub.requestId);
     });
   }
   setup() {
@@ -125,23 +127,30 @@ export class Publisher {
     const msg = serializeClientSetup({
       supportedVersions: this.supportedVersions,
       params: [
-        { type: PARAMETER.SETUP.MAX_SUBSCRIBE_ID.KEY, value: this.maxSubscribeId }
+        { type: PARAMETER.SETUP.MAX_REQUEST_ID.KEY, value: this.maxRequestId }
       ]
     });
     this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
   }
+  private getNextRequestId(): number {
+    this.currentRequestId += 2; // Client uses even Request IDs (0, 2, 4, 6, ...)
+    return this.currentRequestId;
+  }
+
   announce(namespace: string[]) {
     this.namespace = namespace;
-    const msg = serializeAnnounce({ trackNamespace: namespace });
+    const requestId = this.getNextRequestId();
+    this.requestIdToNamespace.set(requestId, namespace);
+    const msg = serializeAnnounce({ requestId, trackNamespace: namespace });
     this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
   }
   unannounce(namespace: string[]) {
     const msg = serializeUnannounce({ trackNamespace: namespace });
     this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
   }
-  subscribeDone(subscribeId: number, track: Track) {
+  subscribeDone(requestId: number, track: Track) {
     const msg = serializeSubscribeDone({
-      subscribeId: subscribeId,
+      requestId: requestId,
       statusCode: SUBSCRIBE_DONE_REASON.TRACK_ENDED,
       reasonPhrase: 'Publisher has stopped sending the track',
       streamCount: track.objectForwardingPrefereces === 'Datagram' ? 0 : track.streamCount
@@ -233,8 +242,8 @@ export class Publisher {
     if (track) {
       // Stop encoding and notify subscribers
       track.subscribers.forEach(sub => {
-        this.subscribeDone(sub.subscribeId, track);
-        this.trackManager.removeSubscriber(sub.subscribeId);
+        this.subscribeDone(sub.requestId, track);
+        this.trackManager.removeSubscriber(sub.requestId);
       });
 
       // Remove from trackManager (warpCatalogManager will read updated state)
@@ -492,18 +501,23 @@ export class Publisher {
       break;
     case `ctrl-${CONTROL_MESSAGE.ANNOUNCE_OK}`:
       msg = message.data.data as AnnounceOk;
-      Mogger.info(`Announce with namespace ${message.data.data.trackNamespace} successful`);
+      const namespace = this.requestIdToNamespace.get(msg.requestId);
+      this.requestIdToNamespace.delete(msg.requestId);
+      Mogger.info(`Announce with namespace ${namespace} successful`);
       break;
     case `ctrl-${CONTROL_MESSAGE.ANNOUNCE_ERROR}`:
-      Mogger.error(`Announce error for namespace ${message.data.data.trackNamespace}. reason: ${message.data.data.reasonPhrase}`);
+      msg = message.data.data as any;
+      const errorNamespace = this.requestIdToNamespace.get(msg.requestId);
+      this.requestIdToNamespace.delete(msg.requestId);
+      Mogger.error(`Announce error for namespace ${errorNamespace}. reason: ${msg.reasonPhrase}`);
       break;
     case `ctrl-${CONTROL_MESSAGE.SUBSCRIBE}`:
       msg = message.data.data as Subscribe;
-      Mogger.info(`Subscribe request for track ${msg.trackName} with subscribeId ${msg.subscribeId} and alias ${msg.trackAlias}`);
+      Mogger.info(`Subscribe request for track ${msg.trackName} with requestId ${msg.requestId} and alias ${msg.trackAlias}`);
       const targetTrack = this.trackManager.getTrack({ name: msg.trackName });
       if (!targetTrack) {
         const sub_err = serializeSubscribeError({
-          subscribeId: msg.subscribeId,
+          requestId: msg.requestId,
           errorCode: SUBSCRIBE_ERROR_REASON.TRACK_DOES_NOT_EXIST,
           reasonPhrase: 'Track does not exist',
           trackAlias: msg.trackAlias
@@ -513,7 +527,7 @@ export class Publisher {
       }
 
       // Return SUBSCRIBE_OK before starting the stream
-      const sub_ok = serializeSubscribeOk({ subscribeId: msg.subscribeId, expires: 0, groupOrder: msg.groupOrder || targetTrack.groupOrderPublisherPreference, contentExists: 0 });
+      const sub_ok = serializeSubscribeOk({ requestId: msg.requestId, expires: 0, groupOrder: msg.groupOrder || targetTrack.groupOrderPublisherPreference, contentExists: 0 });
       this.communicator.postMessage({ type: 'sendControlMessage', data: sub_ok });
 
       if (targetTrack.subscribers.length === 0) this.onSubscribeFirstSubscriberSideEffects(targetTrack);
@@ -521,16 +535,16 @@ export class Publisher {
 
       this.trackManager.addSubscriber({
         name: msg.trackName,
-        subscribeId: msg.subscribeId,
+        requestId: msg.requestId,
         trackAlias: msg.trackAlias,
         filterType: msg.filterType,
       });
-      Mogger.info(`Initialized subscription for track ${msg.trackName} with subscribeId ${msg.subscribeId} and alias ${msg.trackAlias}`);
+      Mogger.info(`Initialized subscription for track ${msg.trackName} with requestId ${msg.requestId} and alias ${msg.trackAlias}`);
       break;
     case `ctrl-${CONTROL_MESSAGE.UNSUBSCRIBE}`:
       msg = message.data.data as Unsubscribe;
-      const emptyTracks = this.trackManager.removeSubscriber(msg.subscribeId);
-      Mogger.debug(`Unsubscribe with subscribeId ${msg.subscribeId} successful`);
+      const emptyTracks = this.trackManager.removeSubscriber(msg.requestId);
+      Mogger.debug(`Unsubscribe with requestId ${msg.requestId} successful`);
       if (emptyTracks.length > 0) {
         emptyTracks.forEach(track => {
           const targetEncoder = track.type === 'video' ? this.videoEncoders[track.name] : this.audioEncoders[track.name];

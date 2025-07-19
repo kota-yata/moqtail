@@ -23,15 +23,15 @@ export class TrackManager {
     }
     return false;
   }
-  public addSubscriber({ name, subscribeId, trackAlias, filterType }: { name: string, subscribeId: number, trackAlias: number, filterType: SUBSCRIBE_FILTER }) {
+  public addSubscriber({ name, requestId, trackAlias, filterType }: { name: string, requestId: number, trackAlias: number, filterType: SUBSCRIBE_FILTER }) {
     const track = this.getTrack({ name });
     if (!track) throw new Error(`Track not found: ${name}`);
-    track.subscribers.push({ subscribeId, trackAlias, filterType });
+    track.subscribers.push({ requestId, trackAlias, filterType });
   }
-  public removeSubscriber(subscribeId: number): Track[] {
+  public removeSubscriber(requestId: number): Track[] {
     const emptyTracks: Track[] = [];
     this.tracks.forEach(track => {
-      track.subscribers = track.subscribers.filter(subscriber => subscriber.subscribeId !== subscribeId);
+      track.subscribers = track.subscribers.filter(subscriber => subscriber.requestId !== requestId);
       if (track.subscribers.length === 0) emptyTracks.push(track);
     });
     return emptyTracks;

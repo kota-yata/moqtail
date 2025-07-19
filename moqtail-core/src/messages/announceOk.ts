@@ -1,22 +1,22 @@
 import { serializeQuicVarInt, stringToVarBytes, concatUint8Arrays, deserializeQuicVarInt } from 'bytes';
 import { CONTROL_MESSAGE } from '../constants';
 import { deserializeNamespace } from '../utils/namespace';
+import { getUint16, setUint16 } from 'bytes';
 
-export const serializeAnnounceOk = (props: { trackNamespace: string[] }) => {
+export const serializeAnnounceOk = (props: { requestId: number }) => {
   const messageTypeBytes = serializeQuicVarInt(CONTROL_MESSAGE.ANNOUNCE_OK);
-  const trackNamespaceLength = serializeQuicVarInt(props.trackNamespace.length);
-  const trackNamespaceBytes = props.trackNamespace.map(stringToVarBytes);
-  const body = concatUint8Arrays([trackNamespaceLength, ...trackNamespaceBytes]);
-  const length = serializeQuicVarInt(body.byteLength);
+  const requestIdBytes = serializeQuicVarInt(props.requestId);
+  const body = requestIdBytes;
+  const length = setUint16(body.byteLength);
   return concatUint8Arrays([messageTypeBytes, length, body]);
 }
 
 export const deserializeAnnounceOk = async (controlReader: ReadableStream) => {
-  await deserializeQuicVarInt(controlReader); // length
-  const trackNamespace = await deserializeNamespace(controlReader);
-  return { trackNamespace };
+  await getUint16(controlReader); // length
+  const requestId = await deserializeQuicVarInt(controlReader);
+  return { requestId };
 }
 
 export interface AnnounceOk {
-  trackNamespace: string[];
+  requestId: number;
 }

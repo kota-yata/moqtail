@@ -1,6 +1,6 @@
 import { DATAGRAM } from "../constants";
 import { concatUint8Arrays, getUint8, serializeQuicVarInt, setUint8, deserializeQuicVarInt, getQuicVarIntLength } from "bytes";
-import { deserializeExtensionHeader, serializeExtensionHeader, serializeExtensionHeaders } from "./extensionHeader";
+import { deserializeExtensionHeader, serializeExtensionHeaders } from "./extensionHeader";
 import type { ExtensionHeader } from "./extensionHeader";
 
 export const deserializeDatagramType = async (readableStream: ReadableStream): Promise<number> => {
@@ -8,7 +8,7 @@ export const deserializeDatagramType = async (readableStream: ReadableStream): P
 }
 
 export const serializeDatagram = (props: Datagram) => {
-  const typeBytes = serializeQuicVarInt(props.payload.byteLength ? DATAGRAM.OBJECT_DATAGRAM: DATAGRAM.OBJECT_DATAGRAM_STATUS);
+  const typeBytes = serializeQuicVarInt(props.extensionHeaders.length > 0 ? DATAGRAM_TYPE.WITH_EXTENSION : DATAGRAM_TYPE.WITHOUT_EXTENSION);
   const trackAliasBytes = serializeQuicVarInt(props.trackAlias);
   const groupIdBytes = serializeQuicVarInt(props.groupId);
   const objectIdBytes = serializeQuicVarInt(props.objectId);
@@ -20,19 +20,30 @@ export const serializeDatagram = (props: Datagram) => {
 
 export const deserializeDatagramHeader = async (readableStream: ReadableStream): Promise<Datagram> => {
   const ret: Datagram = {} as Datagram;
+  // const type = await deserializeQuicVarInt(readableStream) as DATAGRAM_TYPE;
   ret.trackAlias = await deserializeQuicVarInt(readableStream);
   ret.groupId = await deserializeQuicVarInt(readableStream);
   ret.objectId = await deserializeQuicVarInt(readableStream);
-  ret.publisherPriority = await getUint8(readableStream);
-  let extensionHeadersLength = await deserializeQuicVarInt(readableStream);
+  ret.publisherPriority = await getUint8(readableStream)
   ret.extensionHeaders = [];
-  while (extensionHeadersLength > 0) {
-    const v = await deserializeExtensionHeader(readableStream);
-    ret.extensionHeaders.push(v.value);
-    extensionHeadersLength -= v.byteLength;
-  }
+  // if (type === DATAGRAM_TYPE.WITHOUT_EXTENSION) return ret;
   return ret;
+  // let extensionHeadersLength = await deserializeQuicVarInt(readableStream);
+  // ret.extensionHeaders = [];
+  // while (extensionHeadersLength > 0) {
+  //   const v = await deserializeExtensionHeader(readableStream);
+  //   console.log(`Deserialized Extension Header: ${v.value.type} - ${v.value.value}`);
+  //   ret.extensionHeaders.push(v.value);
+  //   extensionHeadersLength -= v.byteLength;
+  // }
+  // return ret;
 }
+
+export const DATAGRAM_TYPE = {
+  WITHOUT_EXTENSION: 0x0,
+  WITH_EXTENSION: 0x1,
+}
+export type DATAGRAM_TYPE = ObjectValueList<typeof DATAGRAM_TYPE>;
 
 export interface Datagram {
   trackAlias: number,

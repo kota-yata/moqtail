@@ -14,7 +14,7 @@ const streamFromArray = (arr: Uint8Array) => new ReadableStream<Uint8Array>({
 
 describe('dataStreams', () => {
   test('extensionHeader round trip', async () => {
-    const header = { id: 2, value: 5 };
+    const header = { type: 2, value: 5 };
     const serialized = serializeExtensionHeader(header);
     const deserialized = await deserializeExtensionHeader(streamFromArray(serialized));
     expect(deserialized.value).toEqual(header);

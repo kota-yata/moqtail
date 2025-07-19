@@ -1,6 +1,6 @@
 import { Mogger } from './utils/mogger';
 import { WarpCatalogManager } from './warpCatalogManager';
-import { CONTROL_MESSAGE, deserializeVideoDecoderConfig, LOC_EXTENSION_HEADER_TYPE, MOQT_DRAFT08_VERSION, MOQT_DRAFT09_VERSION, MOQT_DRAFT10_VERSION, serializeClientSetup, serializeSubscribe, STREAM, deserializeAudioDecoderConfig, serializeUnsubscribe, OBJECT_STATUS, deserializeDatagramFragmentInfo, deserializeEncodedChunkFromArray, WARP_CATALOG_TRACK_NAME } from 'moqtail';
+import { CONTROL_MESSAGE, deserializeVideoDecoderConfig, LOC_EXTENSION_HEADER_TYPE, MOQT_DRAFT11_VERSION, serializeClientSetup, serializeSubscribe, STREAM, deserializeAudioDecoderConfig, serializeUnsubscribe, OBJECT_STATUS, deserializeDatagramFragmentInfo, deserializeEncodedChunkFromArray, WARP_CATALOG_TRACK_NAME, PARAMETER } from 'moqtail';
 import type { Subscribe, ServerSetup, SubscribeOk, SubgroupHeader, SubgroupObject, SubscribeError, Datagram } from 'moqtail';
 import { moqVideoTransmissionLatencyStore, ringStats, bitrateStore } from './utils/store';
 
@@ -18,7 +18,7 @@ import AudioDecoderWorker from './threads/audio/decoder.worker?worker';
 import AudioWorkletURL from './threads/audio/processor.worker?worker&url';
 
 export class Subscriber {
-  private supportedVersions = [MOQT_DRAFT08_VERSION, MOQT_DRAFT09_VERSION, MOQT_DRAFT10_VERSION];
+  private supportedVersions = [MOQT_DRAFT11_VERSION];
   private selectedVersion = 0;
   private subscription: RegisteredSubscription[] = [];
   private videoWaitingForKeyFrame = true;
@@ -29,6 +29,7 @@ export class Subscriber {
   private datagramFragments: Map<string, { total: number; payloads: Uint8Array[]; header: Datagram }> = new Map();
   private videoTimestampOffset: number | null = null;
   private receivedBytes = 0; // for bitrate calculation
+  private maxRequestId = 1000;
   private bitrateInterval: NodeJS.Timeout;
   private audioNode: AudioWorkletNode;
   private communicator: Worker;
@@ -46,7 +47,12 @@ export class Subscriber {
   }
   setup() {
     this.communicator.postMessage({ type: 'startReadLoop', data: null });
-    const msg = serializeClientSetup({ supportedVersions: this.supportedVersions });
+    const msg = serializeClientSetup({
+      supportedVersions: this.supportedVersions,
+      params: [
+        { type: PARAMETER.SETUP.MAX_REQUEST_ID.KEY, value: this.maxRequestId }
+      ]
+    });
     this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
   }
   subscribe(props: Subscribe, trackType: TrackType) {
@@ -59,7 +65,7 @@ export class Subscriber {
   }
   unsubscribe(trackName: string) {
     const sub = this.subscription.find(s => s.subscribe.trackName === trackName);
-    const msg = serializeUnsubscribe(sub.subscribe.subscribeId);
+    const msg = serializeUnsubscribe(sub.subscribe.requestId);
     this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
   }
   private handleCatalogUpdate(payload: Uint8Array) {
@@ -132,10 +138,10 @@ export class Subscriber {
       break;
     case `ctrl-${CONTROL_MESSAGE.SUBSCRIBE_OK}`:
       msg = message.data.data as SubscribeOk;
-      Mogger.info(`Subscribe successful for ${msg.subscribeId}`);
-      const subscription = this.subscription.find(sub => sub.subscribe.subscribeId === msg.subscribeId);
+      Mogger.info(`Subscribe successful for ${msg.requestId}`);
+      const subscription = this.subscription.find(sub => sub.subscribe.requestId === msg.requestId);
       if (!subscription) {
-        Mogger.error(`Unknown subscribeOk with subscribeId:${msg.subscribeId} received`);
+        Mogger.error(`Unknown subscribeOk with requestId:${msg.requestId} received`);
         this.communicator.postMessage({ type: 'closeSession', data: null });
         break;
       }
@@ -186,9 +192,9 @@ export class Subscriber {
       const header = message.data.data.header as SubgroupObject;
       let videoDecoderConfig = null;
       header.extensionHeaders.map(h => {
-        if (h.id === LOC_EXTENSION_HEADER_TYPE.VIDEO_CONFIG) {
+        if (h.type === LOC_EXTENSION_HEADER_TYPE.VIDEO_CONFIG) {
           videoDecoderConfig = deserializeVideoDecoderConfig(h.value as Uint8Array);
-        } else if (h.id === LOC_EXTENSION_HEADER_TYPE.CAPTURE_TIMESTAMP) {
+        } else if (h.type === LOC_EXTENSION_HEADER_TYPE.CAPTURE_TIMESTAMP) {
           const sender = h.value as number;
           const now = Math.round(performance.timeOrigin) + (performance.now() | 0);
           moqVideoTransmissionLatencyStore.set(now - sender);
@@ -219,7 +225,7 @@ export class Subscriber {
         break;
       }
 
-      const fragIndex = datagramObject.header.extensionHeaders.findIndex(h => h.id === LOC_EXTENSION_HEADER_TYPE.DATAGRAM_FRAGMENT_INFO);
+      const fragIndex = datagramObject.header.extensionHeaders.findIndex(h => h.type === LOC_EXTENSION_HEADER_TYPE.DATAGRAM_FRAGMENT_INFO);
       if (fragIndex !== -1) {
         const info = deserializeDatagramFragmentInfo(datagramObject.header.extensionHeaders[fragIndex].value as Uint8Array);
         datagramObject.header.extensionHeaders.splice(fragIndex, 1);
@@ -263,7 +269,7 @@ export class Subscriber {
 
         let audioDecoderConfig = null;
         datagramObject.header.extensionHeaders.map(h => {
-          if (h.id !== LOC_EXTENSION_HEADER_TYPE.AUDIO_CONFIG) return;
+          if (h.type !== LOC_EXTENSION_HEADER_TYPE.AUDIO_CONFIG) return;
           const readableStream = this.generateReadableStreamFromBuffer(h.value as Uint8Array);
           deserializeAudioDecoderConfig(readableStream).then((config) => {
             audioDecoderConfig = config;
@@ -283,7 +289,7 @@ export class Subscriber {
   decoderMessageHandler(message: MessageEvent) {
     switch (message.data.type) {
     case 'videoFrame':
-      const vfData = message.data.data as { subscribeId: number, frame: VideoFrame };
+      const vfData = message.data.data as { requestId: number, frame: VideoFrame };
       if (this.videoWriter) {
         this.videoWriter.write(vfData.frame).then(() => vfData.frame.close());
       }
@@ -315,7 +321,7 @@ export class Subscriber {
     for (const d of queue) {
       let vConfig: VideoDecoderConfig | null = null;
       d.header.extensionHeaders.map(h => {
-        if (h.id === LOC_EXTENSION_HEADER_TYPE.VIDEO_CONFIG) {
+        if (h.type === LOC_EXTENSION_HEADER_TYPE.VIDEO_CONFIG) {
           vConfig = deserializeVideoDecoderConfig(h.value as Uint8Array);
         }
       });
