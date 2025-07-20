@@ -20,23 +20,22 @@ export const serializeDatagram = (props: Datagram) => {
 
 export const deserializeDatagramHeader = async (readableStream: ReadableStream): Promise<Datagram> => {
   const ret: Datagram = {} as Datagram;
-  // const type = await deserializeQuicVarInt(readableStream) as DATAGRAM_TYPE;
+  const type = await deserializeQuicVarInt(readableStream) as DATAGRAM_TYPE;
   ret.trackAlias = await deserializeQuicVarInt(readableStream);
   ret.groupId = await deserializeQuicVarInt(readableStream);
   ret.objectId = await deserializeQuicVarInt(readableStream);
   ret.publisherPriority = await getUint8(readableStream)
   ret.extensionHeaders = [];
-  // if (type === DATAGRAM_TYPE.WITHOUT_EXTENSION) return ret;
+  if (type === DATAGRAM_TYPE.WITHOUT_EXTENSION) return ret;
+  let extensionHeadersLength = await deserializeQuicVarInt(readableStream);
+  ret.extensionHeaders = [];
+  while (extensionHeadersLength > 0) {
+    const v = await deserializeExtensionHeader(readableStream);
+    console.log(`Deserialized Extension Header: ${v.value.type} - ${v.value.value}`);
+    ret.extensionHeaders.push(v.value);
+    extensionHeadersLength -= v.byteLength;
+  }
   return ret;
-  // let extensionHeadersLength = await deserializeQuicVarInt(readableStream);
-  // ret.extensionHeaders = [];
-  // while (extensionHeadersLength > 0) {
-  //   const v = await deserializeExtensionHeader(readableStream);
-  //   console.log(`Deserialized Extension Header: ${v.value.type} - ${v.value.value}`);
-  //   ret.extensionHeaders.push(v.value);
-  //   extensionHeadersLength -= v.byteLength;
-  // }
-  // return ret;
 }
 
 export const DATAGRAM_TYPE = {
