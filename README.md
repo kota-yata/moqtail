@@ -6,15 +6,45 @@ moqtail is a client implementation of Media over QUIC Transport protocol (MoQT).
 This is the root directory of the moqtail projects. The core library lives under the `moqtail-core` workspace. Run `make install` to create symbolic links so you can develop the client and core packages together.
 
 ### Supported messages
+moqtail-core has all control messages' serializer/deserializer, but these are the ones interopped at IETF:
+moqtail cand send:
 - [x] CLIENT_SETUP
+- [x] SUBSCRIBE
+- [x] UNSUBSCRIBE
+- [x] SUBCSRIBE_OK
+- [x] SUBSCRIBE_ERROR
+- [x] SUBSCRIBE_DONE
+- [x] ANNOUNCE
+- [x] UNANNOUNCE
+
+moqtial can receive:
 - [x] SERVER_SETUP
+- [x] UNSUBSCRIBE
 - [x] SUBSCRIBE
 - [x] SUBCSRIBE_OK
+- [x] SUBSCRIBE_ERROR
 - [x] SUBSCRIBE_DONE
-- [x] UNSUBSCRIBE
-- [x] ANNOUNCE
 - [x] ANNOUNCE_OK
-- [x] UNANNOUNCE
+- [x] ANNOUNCE_ERROR
+
+not yet implemented:
+- [ ] GOAWAY
+- [ ] MAX_REQUEST_ID
+- [ ] REQUESTS_BLOCKED
+- [ ] SUBSCRIBE_UPDATE
+- [ ] FETCH
+- [ ] FETCH_OK
+- [ ] FETCH_ERROR
+- [ ] FETCH_CANCEL
+- [ ] TRACK_STATUS_REQUEST
+- [ ] TRACK_STATUS
+- [ ] ANNOUNCE_CANCEL
+- [ ] SUBSCRIBE_ANNOUNCES
+- [ ] SUBSCRIBE_ANNOUNCES_OK
+- [ ] SUBSCRIBE_ANNOUNCES_ERROR
+- [ ] UNSUBSCRIBE_ANNOUNCES
+
+moqtail can also send/receive
 - [x] Datagram
 - [x] Subgroup Object
 
