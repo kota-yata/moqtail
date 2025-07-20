@@ -143,7 +143,9 @@ export class Publisher {
     this.namespace = namespace;
     const requestId = this.getNextRequestId();
     this.requestIdToNamespace.set(requestId, namespace);
-    const msg = serializeAnnounce({ requestId, trackNamespace: namespace });
+    const msg = serializeAnnounce({ requestId, trackNamespace: namespace, parameters: [
+      { type: PARAMETER.AUTHORIZATION_INFO.KEY, value: 'ilovemoxygen' }
+    ] });
     this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
   }
   unannounce(namespace: string[]) {

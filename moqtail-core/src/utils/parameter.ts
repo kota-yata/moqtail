@@ -75,7 +75,7 @@ export const deserializeParams = async (messageType: number, controlReader: Read
     } else {
       switch (keyValuePair.type) {
         case PARAMETER.AUTHORIZATION_INFO.KEY:
-        case PARAMETER.DELIVERY_TIMOUT.KEY:
+        case PARAMETER.DELIVERY_TIMEOUT.KEY:
         case PARAMETER.MAX_CACHE_DURATION.KEY:
           ret.push(parameter);
           break;
