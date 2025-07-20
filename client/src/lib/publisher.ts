@@ -246,7 +246,7 @@ export class Publisher {
       // Stop encoding and notify subscribers
       track.subscribers.forEach(sub => {
         this.subscribeDone(sub.requestId, track);
-        this.trackManager.removeSubscriber(sub.requestId);
+        this.removeSubscriber(sub.requestId);
       });
       // Remove from trackManager (warpCatalogManager will read updated state)
       this.trackManager.removeTrack(trackName);
@@ -290,6 +290,17 @@ export class Publisher {
       payload: new Uint8Array(0)
     });
     this.communicator.postMessage({ type: 'sendSubgroupObject', data: { subgroupObject, subgroupId: lastSubgroupId, isLast: true } });
+  }
+  private removeSubscriber(requestId: number) {
+    const emptyTracks = this.trackManager.removeSubscriber(requestId);
+    if (emptyTracks.length > 0) {
+      emptyTracks.forEach(track => {
+        const targetEncoder = track.type === 'video' ? this.videoEncoders[track.name] : this.audioEncoders[track.name];
+        targetEncoder.postMessage({ type: 'stop', data: null });
+        // targetEncoder.terminate();
+        Mogger.debug(`Stopping encoder for track ${track.name}`);
+      });
+    }
   }
   // find all track aliases of subscribers that are interested in the latest object
   private getAliasOfSubscribersWithLatestObjectFilter(track: Track) {
@@ -544,16 +555,8 @@ export class Publisher {
       break;
     case `ctrl-${CONTROL_MESSAGE.UNSUBSCRIBE}`:
       msg = message.data.data as Unsubscribe;
-      const emptyTracks = this.trackManager.removeSubscriber(msg.requestId);
+      this.removeSubscriber(msg.requestId);
       Mogger.debug(`Unsubscribe with requestId ${msg.requestId} successful`);
-      if (emptyTracks.length > 0) {
-        emptyTracks.forEach(track => {
-          const targetEncoder = track.type === 'video' ? this.videoEncoders[track.name] : this.audioEncoders[track.name];
-          targetEncoder.postMessage({ type: 'stop', data: null });
-          targetEncoder.terminate();
-          Mogger.debug(`Stopping encoder for track ${track.name}`);
-        });
-      }
       break;
     case 'error':
       Mogger.error(`Publisher communicator: ${message.data.data}`);
@@ -581,7 +584,7 @@ export class Publisher {
       const videoChunkMsg = data.data as MoqtailVideoChunkMessage;
       const targetTrack = this.trackManager.getTrack({ name: videoChunkMsg.trackName });
       if (!targetTrack) {
-        Mogger.error(`Track ${videoChunkMsg.trackName} not found`);
+        Mogger.error(`Track ${videoChunkMsg.trackName} not found. Cannot send video chunk.`);
         return;
       }
 
@@ -607,7 +610,7 @@ export class Publisher {
       const audioChunkMsg = message.data.data as MoqtailAudioChunkMessage;
       const audioTrack = this.trackManager.getTrack({ name: audioChunkMsg.trackName });
       if (!audioTrack) {
-        Mogger.error(`Track ${audioChunkMsg.trackName} not found`);
+        Mogger.error(`Track ${audioChunkMsg.trackName} not found. Cannot send audio chunk.`);
         return;
       }
       if (audioChunkMsg.chunk.type === 'key') {

@@ -2,7 +2,7 @@ import { serializeQuicVarInt, stringToVarBytes, concatUint8Arrays, deserializeQu
 import { CONTROL_MESSAGE, SUBSCRIBE_DONE_REASON } from '../constants';
 import { getUint16, setUint16 } from 'bytes';
 
-export const serializeSubscribeDone = (props: { requestId: number, statusCode: SUBSCRIBE_DONE_REASON, reasonPhrase: string, streamCount: number }) => {
+export const serializeSubscribeDone = (props: SubscribeDone) => {
   const messageTypeBytes = serializeQuicVarInt(CONTROL_MESSAGE.SUBSCRIBE_DONE);
   const requestIdBytes = serializeQuicVarInt(props.requestId);
   const statusCodeBytes = serializeQuicVarInt(props.statusCode);
@@ -13,7 +13,7 @@ export const serializeSubscribeDone = (props: { requestId: number, statusCode: S
   return concatUint8Arrays([messageTypeBytes, length, body]);
 }
 
-export const deserializeSubscribeDone = async (controlReader: ReadableStream) => {
+export const deserializeSubscribeDone = async (controlReader: ReadableStream): Promise<SubscribeDone> => {
   await getUint16(controlReader); // length
   const requestId = await deserializeQuicVarInt(controlReader);
   const statusCode = await deserializeQuicVarInt(controlReader) as SUBSCRIBE_DONE_REASON;
@@ -23,4 +23,11 @@ export const deserializeSubscribeDone = async (controlReader: ReadableStream) =>
   const streamCount = await deserializeQuicVarInt(controlReader);
   const reasonPhrase = await varBytesToString(controlReader);
   return { requestId, statusCode, reasonPhrase, streamCount };
+}
+
+export interface SubscribeDone {
+  requestId: number,
+  statusCode: SUBSCRIBE_DONE_REASON,
+  reasonPhrase: string,
+  streamCount: number
 }
