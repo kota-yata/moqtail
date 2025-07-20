@@ -14,6 +14,7 @@ export const serializeDatagram = (props: Datagram) => {
   const objectIdBytes = serializeQuicVarInt(props.objectId);
   const publisherPriorityBytes = setUint8(props.publisherPriority);
   const extensionHeaderBytes = serializeExtensionHeaders(props.extensionHeaders);
+  console.log(`Serialized Datagram: Type=${typeBytes}, TrackAlias=${trackAliasBytes}, GroupId=${groupIdBytes}, ObjectId=${objectIdBytes}, PublisherPriority=${publisherPriorityBytes}, ExtensionHeaders=${extensionHeaderBytes}`);
   const datagram = concatUint8Arrays([typeBytes, trackAliasBytes, groupIdBytes, objectIdBytes, publisherPriorityBytes, extensionHeaderBytes, props.payload]);
   return datagram;
 }
@@ -25,6 +26,7 @@ export const deserializeDatagramHeader = async (readableStream: ReadableStream):
   ret.groupId = await deserializeQuicVarInt(readableStream);
   ret.objectId = await deserializeQuicVarInt(readableStream);
   ret.publisherPriority = await getUint8(readableStream)
+  console.log(`Deserialized Datagram Header: Type=${type}, TrackAlias=${ret.trackAlias}, GroupId=${ret.groupId}, ObjectId=${ret.objectId}, PublisherPriority=${ret.publisherPriority}`);
   ret.extensionHeaders = [];
   if (type === DATAGRAM_TYPE.WITHOUT_EXTENSION) return ret;
   let extensionHeadersLength = await deserializeQuicVarInt(readableStream);
