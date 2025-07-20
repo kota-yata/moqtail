@@ -12,8 +12,8 @@ import {
   captureTimestampToExtensionHeader,
   WARP_CATALOG_TRACK_NAME,
   GROUP_ORDER,
-  SUBGROUP_HEADER_TYPE,
   DATAGRAM_TYPE,
+  STREAM
 } from 'moqtail';
 import type { ServerSetup, AnnounceOk, Subscribe, Unsubscribe, ExtensionHeader, Datagram } from 'moqtail';
 // @ts-ignore
@@ -193,7 +193,7 @@ export class Publisher {
   }
   sendCatalog(alias: number, catalogData: Uint8Array) {
     const datagram: Datagram = {
-      type: DATAGRAM_TYPE.WITHOUT_EXTENSION,
+      type: DATAGRAM_TYPE.DATAGRAM_WITHOUT_EXTENSION,
       trackAlias: alias,
       groupId: 0,
       objectId: Date.now(),
@@ -316,7 +316,7 @@ export class Publisher {
     Mogger.debug(`Creating subgroup stream for subgroupId ${subgroupId} with aliases ${aliases}`);
     for (const alias of aliases) {
       const subgroupHeader = serializeSubgroupHeader({
-        type: SUBGROUP_HEADER_TYPE.SUBGROUP_FIELD_WITH_EXTENSION,
+        type: STREAM.SUBGROUP_FIELD_WITH_EXTENSION,
         trackAlias: alias,
         subgroupId,
         groupId: targetTrack.largestGroupId,
@@ -388,7 +388,7 @@ export class Publisher {
     const interestedAliases = this.getAliasOfSubscribersWithLatestObjectFilter(targetTrack);
     for (const alias of interestedAliases) {
       const datagram: Datagram = {
-        type: extensionHeaders.length > 0 ? DATAGRAM_TYPE.WITH_EXTENSION : DATAGRAM_TYPE.WITHOUT_EXTENSION,
+        type: extensionHeaders.length > 0 ? DATAGRAM_TYPE.DATAGRAM_WITH_EXTENSION : DATAGRAM_TYPE.DATAGRAM_WITHOUT_EXTENSION,
         trackAlias: alias,
         groupId: targetTrack.largestGroupId,
         objectId: targetTrack.largestObjectId,
@@ -467,7 +467,7 @@ export class Publisher {
       const aliases = this.getAliasOfSubscribersWithLatestObjectFilter(targetTrack);
       for (const alias of aliases) {
         const datagram: Datagram = {
-          type: extensionHeaders.length > 0 ? DATAGRAM_TYPE.WITH_EXTENSION : DATAGRAM_TYPE.WITHOUT_EXTENSION,
+          type: extensionHeaders.length > 0 ? DATAGRAM_TYPE.DATAGRAM_WITH_EXTENSION : DATAGRAM_TYPE.DATAGRAM_WITHOUT_EXTENSION,
           trackAlias: alias,
           groupId: targetTrack.largestGroupId,
           objectId: targetTrack.largestObjectId,
@@ -629,7 +629,7 @@ export class Publisher {
       const extensionHeaders = audioChunkMsg.metadata.decoderConfig ? [audioDecoderConfigToExtensionHeader(audioChunkMsg.metadata.decoderConfig)]: [];
       for (const alias of interestedAliases) {
         const datagram: Datagram = {
-          type: extensionHeaders.length > 0 ? DATAGRAM_TYPE.WITH_EXTENSION : DATAGRAM_TYPE.WITHOUT_EXTENSION,
+          type: extensionHeaders.length > 0 ? DATAGRAM_TYPE.DATAGRAM_WITH_EXTENSION : DATAGRAM_TYPE.DATAGRAM_WITHOUT_EXTENSION,
           trackAlias: alias,
           groupId: audioTrack.largestGroupId,
           objectId: audioTrack.largestObjectId,

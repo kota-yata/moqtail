@@ -1,5 +1,5 @@
 import { Mogger } from '$lib/utils/mogger';
-import { CONTROL_MESSAGE, DATAGRAM, deserializeAnnounceError, deserializeAnnounceOk, deserializeDatagramHeader, deserializeDatagramType, deserializeEncodedChunk, deserializeServerSetup, deserializeSubgroupHeader, deserializeSubgroupObjectHeader, deserializeSubscribe, deserializeSubscribeDone, deserializeSubscribeError, deserializeSubscribeOk, deserializeUnsubscribe, OBJECT_STATUS, readControlMessageType, STREAM, readStream } from 'moqtail';
+import { CONTROL_MESSAGE, deserializeAnnounceError, deserializeAnnounceOk, deserializeDatagramHeader, deserializeDatagramType, deserializeEncodedChunk, deserializeServerSetup, deserializeSubgroupHeader, deserializeSubgroupObjectHeader, deserializeSubscribe, deserializeSubscribeDone, deserializeSubscribeError, deserializeSubscribeOk, deserializeUnsubscribe, OBJECT_STATUS, readControlMessageType, STREAM, readStream, DATAGRAM_TYPE, deserializeStreamType } from 'moqtail';
 
 export const COMMUNICATOR_STATE = {
   STOPPED: 0b0,
@@ -134,11 +134,20 @@ class MoQTCommunicator {
     }
   }
   async readDatagramObject(reader: ReadableStream) {
-    const header = await deserializeDatagramHeader(reader);
-    const payload = await readStream(reader, 1024);
-    postMessage({ type: 'datagramObject', data: { header, payload } }, [payload.buffer]);
-    // TODO: implement object status handling
-    // postMessage({ type: 'datagramObjectStatus', data: { header } });
+    const datagramType = await deserializeDatagramType(reader);
+    switch (datagramType) {
+      case DATAGRAM_TYPE.DATAGRAM_WITHOUT_EXTENSION:
+      case DATAGRAM_TYPE.DATAGRAM_WITH_EXTENSION:
+        const header = await deserializeDatagramHeader(datagramType, reader);
+        const payload = await readStream(reader, 1024);
+        postMessage({ type: 'datagramObject', data: { header, payload } }, [payload.buffer]);
+        break;
+      case DATAGRAM_TYPE.DATAGRAM_STATUS_WITHOUT_EXTENSION:
+      case DATAGRAM_TYPE.DATAGRAM_STATUS_WITH_EXTENSION:
+        Mogger.debug('Datagram status received');
+        // TODO: implement object status handling
+        break;
+    }
   }
   async startReadLoop() {
     while (this.state & COMMUNICATOR_STATE.RUNNING) {
@@ -189,9 +198,16 @@ class MoQTCommunicator {
         Mogger.error('Stream reader closed');
         break;
       }
-      const subgroupHeader = await deserializeSubgroupHeader(readableStream);
-        postMessage({ type: `subgroup-header`, data: subgroupHeader });
-        this.readSubgroupObject(readableStream, subgroupHeader.trackAlias, subgroupHeader.subgroupId, subgroupHeader.groupId);
+      const headerType = await deserializeStreamType(readableStream);
+      switch (headerType) {
+        case STREAM.FETCH_HEADER:
+          Mogger.debug('Fetch header received');
+          break;
+        default:
+          const subgroupHeader = await deserializeSubgroupHeader(headerType, readableStream);
+          postMessage({ type: `subgroup-header`, data: subgroupHeader });
+          this.readSubgroupObject(readableStream, subgroupHeader.trackAlias, subgroupHeader.subgroupId, subgroupHeader.groupId);
+      }
       reader.releaseLock();
     }
   }
