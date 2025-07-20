@@ -91,14 +91,14 @@
       forward: SUBSCRIBE_FORWARD.FORWARD,
       filterType: SUBSCRIBE_FILTER.LATEST_OBJECT
     };
-    // subscriber.subscribe(subscribeAudio, 'audio');
+    subscriber.subscribe(subscribeAudio, 'audio');
   };
   const stopStream = () => {
     if (warpCatalogEnabled) {
       subscriber.unsubscribe(WARP_CATALOG_TRACK_NAME);
     }
     subscriber.unsubscribe(videoTrackName);
-    // subscriber.unsubscribe(audioTrackName);
+    subscriber.unsubscribe(audioTrackName);
     subscriber.stopAudio();
   };
 </script>
