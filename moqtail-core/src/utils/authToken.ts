@@ -30,7 +30,7 @@ export const AUTH_TOKEN_ALIAS_TYPE = {
   REGISTER: 0x1,
   USE_ALIAS: 0x2,
   USE_VALUE: 0x3,
-}
+} as const;
 export type AUTH_TOKEN_ALIAS_TYPE = ObjectValueList<typeof AUTH_TOKEN_ALIAS_TYPE>;
 
 export interface TOKEN {
