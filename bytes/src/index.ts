@@ -157,13 +157,18 @@ export const getUint8 = async (readableStream: ReadableStream): Promise<number> 
   return new DataView(buf.buffer).getUint8(0);
 };
 
+export const getUint16 = async (readableStream: ReadableStream): Promise<number> => {
+  const buf = await buffRead(readableStream, 2);
+  return new DataView(buf.buffer).getUint16(0, false); // big-endian
+};
+
 export const setUint8 = (v: number) => {
   const ret = new Uint8Array(1);
   ret[0] = v;
   return ret;
 };
 
-const setUint16 = (v: number) => {
+export const setUint16 = (v: number) => {
   const ret = new Uint8Array(2);
   const view = new DataView(ret.buffer);
   view.setUint16(0, v);

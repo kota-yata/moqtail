@@ -37,7 +37,7 @@ declare global {
     isTrackEnded?: boolean;
     encoderConfig?: MyEncoderConfig;
     type: TrackType;
-    subscribers: { subscribeId: number, trackAlias: number, filterType: SUBSCRIBE_FILTER }[];
+    subscribers: { requestId: number, trackAlias: number, filterType: SUBSCRIBE_FILTER }[];
     streamCount?: number;
   }
   type MoqtailEncodedVideoChunkMetadata = EncodedVideoChunkMetadata & { frameType: EncodedVideoChunkType, totalChunkCount: number }

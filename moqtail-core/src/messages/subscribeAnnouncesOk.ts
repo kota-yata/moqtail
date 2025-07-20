@@ -1,18 +1,21 @@
-import { serializeQuicVarInt, stringToVarBytes, concatUint8Arrays, deserializeQuicVarInt, varBytesToString } from 'bytes';
+import { serializeQuicVarInt, concatUint8Arrays, deserializeQuicVarInt } from 'bytes';
 import { CONTROL_MESSAGE } from '../constants';
-import { deserializeNamespace } from '../utils/namespace';
+import { getUint16, setUint16 } from "bytes";
 
-export const serializeSubscribeAnnouncesOk = (trackNamespacePrefix: string[]) => {
+export interface SubscribeAnnouncesOk {
+  requestId: number;
+}
+
+export const serializeSubscribeAnnouncesOk = (props: SubscribeAnnouncesOk) => {
   const messageTypeBytes = serializeQuicVarInt(CONTROL_MESSAGE.SUBSCRIBE_ANNOUNCES_OK);
-  const trackNamespacePrefixLength = serializeQuicVarInt(trackNamespacePrefix.length);
-  const trackNamespacePrefixBytes = trackNamespacePrefix.map(stringToVarBytes);
-  const body = concatUint8Arrays([trackNamespacePrefixLength, ...trackNamespacePrefixBytes]);
-  const length = serializeQuicVarInt(body.byteLength);
+  const requestIdBytes = serializeQuicVarInt(props.requestId);
+  const body = requestIdBytes;
+  const length = setUint16(body.byteLength);
   return concatUint8Arrays([messageTypeBytes, length, body]);
 }
 
-export const deserializeSubscribeAnnouncesOk = async (controlReader: ReadableStream) => {
-  await deserializeQuicVarInt(controlReader); // length
-  const trackNamespacePrefix = await deserializeNamespace(controlReader);
-  return { trackNamespacePrefix };
+export const deserializeSubscribeAnnouncesOk = async (controlReader: ReadableStream): Promise<SubscribeAnnouncesOk> => {
+  await getUint16(controlReader); // length
+  const requestId = await deserializeQuicVarInt(controlReader);
+  return { requestId };
 }

@@ -1,25 +1,26 @@
 import { serializeQuicVarInt, stringToVarBytes, concatUint8Arrays, deserializeQuicVarInt, varBytesToString } from 'bytes';
 import { CONTROL_MESSAGE, ANNOUNCE_ERROR_REASON } from '../constants';
 import { deserializeNamespace } from '../utils/namespace';
+import { getUint16, setUint16 } from 'bytes';
+import { serializeReasonPhrase, deserializeReasonPhrase } from '../utils/reasonPhrase';
 
-export const serializeAnnounceError = (props: { trackNamespace: string[], errorCode: ANNOUNCE_ERROR_REASON, reasonPhrase: string }) => {
+export const serializeAnnounceError = (props: { requestId: number, errorCode: ANNOUNCE_ERROR_REASON, reasonPhrase: string }) => {
   const messageTypeBytes = serializeQuicVarInt(CONTROL_MESSAGE.ANNOUNCE_ERROR);
-  const trackNamespaceLength = serializeQuicVarInt(props.trackNamespace.length);
-  const trackNamespaceBytes = props.trackNamespace.map(stringToVarBytes);
+  const requestIdBytes = serializeQuicVarInt(props.requestId);
   const errorCodeBytes = serializeQuicVarInt(props.errorCode);
-  const reasonPhraseBytes = stringToVarBytes(props.reasonPhrase);
-  const body = concatUint8Arrays([trackNamespaceLength, ...trackNamespaceBytes, errorCodeBytes, reasonPhraseBytes]);
-  const length = serializeQuicVarInt(body.byteLength);
+  const reasonPhraseBytes = serializeReasonPhrase(props.reasonPhrase);
+  const body = concatUint8Arrays([requestIdBytes, errorCodeBytes, reasonPhraseBytes]);
+  const length = setUint16(body.byteLength);
   return concatUint8Arrays([messageTypeBytes, length, body]);
 }
 
 export const deserializeAnnounceError = async (controlReader: ReadableStream) => {
-  await deserializeQuicVarInt(controlReader); // length
-  const trackNamespace = await deserializeNamespace(controlReader);
+  await getUint16(controlReader); // length
+  const requestId = await deserializeQuicVarInt(controlReader);
   const errorCode = await deserializeQuicVarInt(controlReader) as ANNOUNCE_ERROR_REASON;
   if (!Object.values(ANNOUNCE_ERROR_REASON).includes(errorCode)) {
     throw new Error(`Invalid Announce Error Code: ${errorCode}`);
   }
-  const reasonPhrase = await varBytesToString(controlReader);
-  return { trackNamespace, errorCode, reasonPhrase };
+  const reasonPhrase = await deserializeReasonPhrase(controlReader);
+  return { requestId, errorCode, reasonPhrase };
 }

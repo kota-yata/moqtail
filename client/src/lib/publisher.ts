@@ -1,7 +1,7 @@
 // main thread for publisher
 // interaction with the component page: video/audio start, stop, pause, resume,
 import {
-  CONTROL_MESSAGE, MOQT_DRAFT10_VERSION, PARAMETER,
+  CONTROL_MESSAGE, MOQT_DRAFT11_VERSION, PARAMETER,
   serializeAnnounce, serializeClientSetup, serializeSubgroupHeader, serializeSubscribeError, serializeSubscribeOk,
   serializeUnannounce, SUBSCRIBE_ERROR_REASON, SUBSCRIBE_FILTER, serializeSubgroupObject, serializeEncodedChunk,
   videoDecoderConfigToExtensionHeader, OBJECT_STATUS, serializeDatagram, audioDecoderConfigToExtensionHeader,
@@ -12,6 +12,8 @@ import {
   captureTimestampToExtensionHeader,
   WARP_CATALOG_TRACK_NAME,
   GROUP_ORDER,
+  SUBGROUP_HEADER_TYPE,
+  DATAGRAM_TYPE,
 } from 'moqtail';
 import type { ServerSetup, AnnounceOk, Subscribe, Unsubscribe, ExtensionHeader, Datagram } from 'moqtail';
 // @ts-ignore
@@ -30,11 +32,13 @@ export class Publisher {
   private audioEncoders: { [key: string]: Worker } = {};
   private trackManager: TrackManager = new TrackManager();
   private warpCatalogManager: WarpCatalogManager = new WarpCatalogManager();
-  private supportedVersions = [MOQT_DRAFT10_VERSION];
+  private supportedVersions = [MOQT_DRAFT11_VERSION];
   private selectedVersion = 0;
-  private maxSubscribeId = 1000;
+  private maxRequestId = 1000;
+  private currentRequestId = -2; // Will become 0 after first increment
   private datagramMaxSize = 1024;
   private namespace: string[] = [];
+  private requestIdToNamespace: Map<number, string[]> = new Map();
   constructor(props: PublisherInitProps) {
     this.communicator = new CommunicatorWorker();
     this.communicator.onmessage = this.communicatorMessageHandler.bind(this);
@@ -116,8 +120,8 @@ export class Publisher {
     encoder.postMessage({ type: 'stop', data: null });
     encoder.terminate();
     track.subscribers.forEach(sub => {
-      this.subscribeDone(sub.subscribeId, track);
-      this.trackManager.removeSubscriber(sub.subscribeId);
+      this.subscribeDone(sub.requestId, track);
+      this.trackManager.removeSubscriber(sub.requestId);
     });
   }
   setup() {
@@ -125,23 +129,30 @@ export class Publisher {
     const msg = serializeClientSetup({
       supportedVersions: this.supportedVersions,
       params: [
-        { type: PARAMETER.SETUP.MAX_SUBSCRIBE_ID.KEY, value: this.maxSubscribeId }
+        { type: PARAMETER.SETUP.MAX_REQUEST_ID.KEY, value: this.maxRequestId }
       ]
     });
     this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
   }
+  private getNextRequestId(): number {
+    this.currentRequestId += 2; // Client uses even Request IDs (0, 2, 4, 6, ...)
+    return this.currentRequestId;
+  }
+
   announce(namespace: string[]) {
     this.namespace = namespace;
-    const msg = serializeAnnounce({ trackNamespace: namespace });
+    const requestId = this.getNextRequestId();
+    this.requestIdToNamespace.set(requestId, namespace);
+    const msg = serializeAnnounce({ requestId, trackNamespace: namespace });
     this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
   }
   unannounce(namespace: string[]) {
     const msg = serializeUnannounce({ trackNamespace: namespace });
     this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
   }
-  subscribeDone(subscribeId: number, track: Track) {
+  subscribeDone(requestId: number, track: Track) {
     const msg = serializeSubscribeDone({
-      subscribeId: subscribeId,
+      requestId: requestId,
       statusCode: SUBSCRIBE_DONE_REASON.TRACK_ENDED,
       reasonPhrase: 'Publisher has stopped sending the track',
       streamCount: track.objectForwardingPrefereces === 'Datagram' ? 0 : track.streamCount
@@ -182,6 +193,7 @@ export class Publisher {
   }
   sendCatalog(alias: number, catalogData: Uint8Array) {
     const datagram: Datagram = {
+      type: DATAGRAM_TYPE.WITHOUT_EXTENSION,
       trackAlias: alias,
       groupId: 0,
       objectId: Date.now(),
@@ -233,14 +245,11 @@ export class Publisher {
     if (track) {
       // Stop encoding and notify subscribers
       track.subscribers.forEach(sub => {
-        this.subscribeDone(sub.subscribeId, track);
-        this.trackManager.removeSubscriber(sub.subscribeId);
+        this.subscribeDone(sub.requestId, track);
+        this.removeSubscriber(sub.requestId);
       });
-
       // Remove from trackManager (warpCatalogManager will read updated state)
       this.trackManager.removeTrack(trackName);
-
-      // Update catalog
       if (this.warpCatalogManager.supportsDeltaUpdates()) {
         const patchData = this.warpCatalogManager.createRemoveTrackPatch(trackName, this.namespace.join('/'));
         if (patchData) {
@@ -253,7 +262,6 @@ export class Publisher {
     }
   }
   terminateWarpSession() {
-    // Publish terminating catalog (empty tracks)
     const terminatingCatalog = this.warpCatalogManager.createTerminatingCatalog();
     this.broadcastCatalog(terminatingCatalog);
   }
@@ -271,8 +279,7 @@ export class Publisher {
       // publisher priority must be between 0-255
       return (subgroupId + 10 % 256);
     } else {
-      // catalog tracks are not prioritized
-      return 255;
+      return 255; // catalog tracks are not prioritized
     }
   }
   private sendEndOfGroup(lastSubgroupId: number, lastObjectId: number) {
@@ -284,6 +291,17 @@ export class Publisher {
     });
     this.communicator.postMessage({ type: 'sendSubgroupObject', data: { subgroupObject, subgroupId: lastSubgroupId, isLast: true } });
   }
+  private removeSubscriber(requestId: number) {
+    const emptyTracks = this.trackManager.removeSubscriber(requestId);
+    if (emptyTracks.length > 0) {
+      emptyTracks.forEach(track => {
+        const targetEncoder = track.type === 'video' ? this.videoEncoders[track.name] : this.audioEncoders[track.name];
+        targetEncoder.postMessage({ type: 'stop', data: null });
+        // targetEncoder.terminate();
+        Mogger.debug(`Stopping encoder for track ${track.name}`);
+      });
+    }
+  }
   // find all track aliases of subscribers that are interested in the latest object
   private getAliasOfSubscribersWithLatestObjectFilter(track: Track) {
     return track.subscribers.filter(sub => sub.filterType === SUBSCRIBE_FILTER.LATEST_OBJECT).map(sub => sub.trackAlias);
@@ -293,6 +311,7 @@ export class Publisher {
     Mogger.debug(`Creating subgroup stream for subgroupId ${subgroupId} with aliases ${aliases}`);
     for (const alias of aliases) {
       const subgroupHeader = serializeSubgroupHeader({
+        type: SUBGROUP_HEADER_TYPE.SUBGROUP_FIELD_WITH_EXTENSION,
         trackAlias: alias,
         subgroupId,
         groupId: targetTrack.largestGroupId,
@@ -364,6 +383,7 @@ export class Publisher {
     const interestedAliases = this.getAliasOfSubscribersWithLatestObjectFilter(targetTrack);
     for (const alias of interestedAliases) {
       const datagram: Datagram = {
+        type: extensionHeaders.length > 0 ? DATAGRAM_TYPE.WITH_EXTENSION : DATAGRAM_TYPE.WITHOUT_EXTENSION,
         trackAlias: alias,
         groupId: targetTrack.largestGroupId,
         objectId: targetTrack.largestObjectId,
@@ -442,6 +462,7 @@ export class Publisher {
       const aliases = this.getAliasOfSubscribersWithLatestObjectFilter(targetTrack);
       for (const alias of aliases) {
         const datagram: Datagram = {
+          type: extensionHeaders.length > 0 ? DATAGRAM_TYPE.WITH_EXTENSION : DATAGRAM_TYPE.WITHOUT_EXTENSION,
           trackAlias: alias,
           groupId: targetTrack.largestGroupId,
           objectId: targetTrack.largestObjectId,
@@ -492,18 +513,23 @@ export class Publisher {
       break;
     case `ctrl-${CONTROL_MESSAGE.ANNOUNCE_OK}`:
       msg = message.data.data as AnnounceOk;
-      Mogger.info(`Announce with namespace ${message.data.data.trackNamespace} successful`);
+      const namespace = this.requestIdToNamespace.get(msg.requestId);
+      this.requestIdToNamespace.delete(msg.requestId);
+      Mogger.info(`Announce with namespace ${namespace} successful`);
       break;
     case `ctrl-${CONTROL_MESSAGE.ANNOUNCE_ERROR}`:
-      Mogger.error(`Announce error for namespace ${message.data.data.trackNamespace}. reason: ${message.data.data.reasonPhrase}`);
+      msg = message.data.data as any;
+      const errorNamespace = this.requestIdToNamespace.get(msg.requestId);
+      this.requestIdToNamespace.delete(msg.requestId);
+      Mogger.error(`Announce error for namespace ${errorNamespace}. reason: ${msg.reasonPhrase}`);
       break;
     case `ctrl-${CONTROL_MESSAGE.SUBSCRIBE}`:
       msg = message.data.data as Subscribe;
-      Mogger.info(`Subscribe request for track ${msg.trackName} with subscribeId ${msg.subscribeId} and alias ${msg.trackAlias}`);
+      Mogger.info(`Subscribe request for track ${msg.trackName} with requestId ${msg.requestId} and alias ${msg.trackAlias}`);
       const targetTrack = this.trackManager.getTrack({ name: msg.trackName });
       if (!targetTrack) {
         const sub_err = serializeSubscribeError({
-          subscribeId: msg.subscribeId,
+          requestId: msg.requestId,
           errorCode: SUBSCRIBE_ERROR_REASON.TRACK_DOES_NOT_EXIST,
           reasonPhrase: 'Track does not exist',
           trackAlias: msg.trackAlias
@@ -513,7 +539,7 @@ export class Publisher {
       }
 
       // Return SUBSCRIBE_OK before starting the stream
-      const sub_ok = serializeSubscribeOk({ subscribeId: msg.subscribeId, expires: 0, groupOrder: msg.groupOrder || targetTrack.groupOrderPublisherPreference, contentExists: 0 });
+      const sub_ok = serializeSubscribeOk({ requestId: msg.requestId, expires: 0, groupOrder: msg.groupOrder || targetTrack.groupOrderPublisherPreference, contentExists: 0 });
       this.communicator.postMessage({ type: 'sendControlMessage', data: sub_ok });
 
       if (targetTrack.subscribers.length === 0) this.onSubscribeFirstSubscriberSideEffects(targetTrack);
@@ -521,24 +547,16 @@ export class Publisher {
 
       this.trackManager.addSubscriber({
         name: msg.trackName,
-        subscribeId: msg.subscribeId,
+        requestId: msg.requestId,
         trackAlias: msg.trackAlias,
         filterType: msg.filterType,
       });
-      Mogger.info(`Initialized subscription for track ${msg.trackName} with subscribeId ${msg.subscribeId} and alias ${msg.trackAlias}`);
+      Mogger.info(`Initialized subscription for track ${msg.trackName} with requestId ${msg.requestId} and alias ${msg.trackAlias}`);
       break;
     case `ctrl-${CONTROL_MESSAGE.UNSUBSCRIBE}`:
       msg = message.data.data as Unsubscribe;
-      const emptyTracks = this.trackManager.removeSubscriber(msg.subscribeId);
-      Mogger.debug(`Unsubscribe with subscribeId ${msg.subscribeId} successful`);
-      if (emptyTracks.length > 0) {
-        emptyTracks.forEach(track => {
-          const targetEncoder = track.type === 'video' ? this.videoEncoders[track.name] : this.audioEncoders[track.name];
-          targetEncoder.postMessage({ type: 'stop', data: null });
-          targetEncoder.terminate();
-          Mogger.debug(`Stopping encoder for track ${track.name}`);
-        });
-      }
+      this.removeSubscriber(msg.requestId);
+      Mogger.debug(`Unsubscribe with requestId ${msg.requestId} successful`);
       break;
     case 'error':
       Mogger.error(`Publisher communicator: ${message.data.data}`);
@@ -566,7 +584,7 @@ export class Publisher {
       const videoChunkMsg = data.data as MoqtailVideoChunkMessage;
       const targetTrack = this.trackManager.getTrack({ name: videoChunkMsg.trackName });
       if (!targetTrack) {
-        Mogger.error(`Track ${videoChunkMsg.trackName} not found`);
+        Mogger.error(`Track ${videoChunkMsg.trackName} not found. Cannot send video chunk.`);
         return;
       }
 
@@ -592,7 +610,7 @@ export class Publisher {
       const audioChunkMsg = message.data.data as MoqtailAudioChunkMessage;
       const audioTrack = this.trackManager.getTrack({ name: audioChunkMsg.trackName });
       if (!audioTrack) {
-        Mogger.error(`Track ${audioChunkMsg.trackName} not found`);
+        Mogger.error(`Track ${audioChunkMsg.trackName} not found. Cannot send audio chunk.`);
         return;
       }
       if (audioChunkMsg.chunk.type === 'key') {
@@ -601,13 +619,15 @@ export class Publisher {
       }
       const audioChunkBytes = serializeEncodedChunk(audioChunkMsg.chunk);
       const interestedAliases = this.getAliasOfSubscribersWithLatestObjectFilter(audioTrack);
+      const extensionHeaders = audioChunkMsg.metadata.decoderConfig ? [audioDecoderConfigToExtensionHeader(audioChunkMsg.metadata.decoderConfig)]: [];
       for (const alias of interestedAliases) {
         const datagram: Datagram = {
+          type: extensionHeaders.length > 0 ? DATAGRAM_TYPE.WITH_EXTENSION : DATAGRAM_TYPE.WITHOUT_EXTENSION,
           trackAlias: alias,
           groupId: audioTrack.largestGroupId,
           objectId: audioTrack.largestObjectId,
           publisherPriority: this.getPublisherPriority(audioTrack.type),
-          extensionHeaders: audioChunkMsg.metadata.decoderConfig ? [audioDecoderConfigToExtensionHeader(audioChunkMsg.metadata.decoderConfig)]: [],
+          extensionHeaders: extensionHeaders,
           payload: audioChunkBytes,
         };
         this.sendDatagram(datagram);

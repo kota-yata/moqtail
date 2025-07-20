@@ -134,17 +134,11 @@ class MoQTCommunicator {
     }
   }
   async readDatagramObject(reader: ReadableStream) {
-    // TODO: send objectStatus from publisher
-    // then the end of loop can be detected
-    const type = await deserializeDatagramType(reader);
     const header = await deserializeDatagramHeader(reader);
-    // done = type === DATAGRAM.OBJECT_DATAGRAM_STATUS;
-    if (type === DATAGRAM.OBJECT_DATAGRAM) {
-      const payload = await readStream(reader, 1024);
-      postMessage({ type: 'datagramObject', data: { header, payload } }, [payload.buffer]);
-    } else {
-      postMessage({ type: 'datagramObjectStatus', data: { header } });
-    }
+    const payload = await readStream(reader, 1024);
+    postMessage({ type: 'datagramObject', data: { header, payload } }, [payload.buffer]);
+    // TODO: implement object status handling
+    // postMessage({ type: 'datagramObjectStatus', data: { header } });
   }
   async startReadLoop() {
     while (this.state & COMMUNICATOR_STATE.RUNNING) {
@@ -195,14 +189,9 @@ class MoQTCommunicator {
         Mogger.error('Stream reader closed');
         break;
       }
-      const streamType = await readControlMessageType(readableStream);
-      switch (streamType) {
-      case STREAM.SUBGROUP_HEADER:
-        const subgroupHeader = await deserializeSubgroupHeader(readableStream);
-        postMessage({ type: `stream-${streamType}`, data: subgroupHeader });
+      const subgroupHeader = await deserializeSubgroupHeader(readableStream);
+        postMessage({ type: `subgroup-header`, data: subgroupHeader });
         this.readSubgroupObject(readableStream, subgroupHeader.trackAlias, subgroupHeader.subgroupId, subgroupHeader.groupId);
-        break;
-      }
       reader.releaseLock();
     }
   }

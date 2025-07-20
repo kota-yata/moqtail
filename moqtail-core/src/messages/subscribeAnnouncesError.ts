@@ -1,25 +1,31 @@
-import { serializeQuicVarInt, stringToVarBytes, concatUint8Arrays, deserializeQuicVarInt, varBytesToString } from 'bytes';
+import { serializeQuicVarInt, concatUint8Arrays, deserializeQuicVarInt } from 'bytes';
 import { CONTROL_MESSAGE, SUBSCRIBE_ANNOUNCES_ERROR_REASON } from '../constants';
-import { deserializeNamespace } from '../utils/namespace';
+import { getUint16, setUint16 } from "bytes";
+import { serializeReasonPhrase, deserializeReasonPhrase } from '../utils/reasonPhrase';
 
-export const serializeSubscribeAnnouncesError = (props: { trackNamespacePrefix: string[], errorCode: SUBSCRIBE_ANNOUNCES_ERROR_REASON, reasonPhrase: string }) => {
+export interface SubscribeAnnouncesError {
+  requestId: number;
+  errorCode: SUBSCRIBE_ANNOUNCES_ERROR_REASON;
+  reasonPhrase: string;
+}
+
+export const serializeSubscribeAnnouncesError = (props: SubscribeAnnouncesError) => {
   const messageTypeBytes = serializeQuicVarInt(CONTROL_MESSAGE.SUBSCRIBE_ANNOUNCES_ERROR);
-  const trackNamespacePrefixLength = serializeQuicVarInt(props.trackNamespacePrefix.length);
-  const trackNamespacePrefixBytes = props.trackNamespacePrefix.map(stringToVarBytes);
+  const requestIdBytes = serializeQuicVarInt(props.requestId);
   const errorCodeBytes = serializeQuicVarInt(props.errorCode);
-  const reasonPhraseBytes = stringToVarBytes(props.reasonPhrase);
-  const body = concatUint8Arrays([trackNamespacePrefixLength, ...trackNamespacePrefixBytes, errorCodeBytes, reasonPhraseBytes]);
-  const length = serializeQuicVarInt(body.byteLength);
+  const reasonPhraseBytes = serializeReasonPhrase(props.reasonPhrase);
+  const body = concatUint8Arrays([requestIdBytes, errorCodeBytes, reasonPhraseBytes]);
+  const length = setUint16(body.byteLength);
   return concatUint8Arrays([messageTypeBytes, length, body]);
 }
 
-export const deserializeSubscribeAnnouncesError = async (controlReader: ReadableStream) => {
-  await deserializeQuicVarInt(controlReader); // length
-  const trackNamespacePrefix = await deserializeNamespace(controlReader);
+export const deserializeSubscribeAnnouncesError = async (controlReader: ReadableStream): Promise<SubscribeAnnouncesError> => {
+  await getUint16(controlReader); // length
+  const requestId = await deserializeQuicVarInt(controlReader);
   const errorCode = await deserializeQuicVarInt(controlReader) as SUBSCRIBE_ANNOUNCES_ERROR_REASON;
   if (!Object.values(SUBSCRIBE_ANNOUNCES_ERROR_REASON).includes(errorCode)) {
     throw new Error(`Invalid Subscribe Announces Error Code: ${errorCode}`);
   }
-  const reasonPhrase = await varBytesToString(controlReader);
-  return { trackNamespacePrefix, errorCode, reasonPhrase };
+  const reasonPhrase = await deserializeReasonPhrase(controlReader);
+  return { requestId, errorCode, reasonPhrase };
 }

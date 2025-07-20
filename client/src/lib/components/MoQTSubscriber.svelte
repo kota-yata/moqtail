@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Subscriber } from '$lib/subscriber';
-  import { GROUP_ORDER, type Subscribe, SUBSCRIBE_FILTER, WARP_CATALOG_TRACK_NAME } from 'moqtail';
+  import { GROUP_ORDER, type Subscribe, SUBSCRIBE_FILTER, SUBSCRIBE_FORWARD, WARP_CATALOG_TRACK_NAME } from 'moqtail';
 
   let videoEl: HTMLVideoElement;
   let moqIsPlaying = false;
@@ -19,9 +19,10 @@
   let availableTracks = [];
   let catalog = null;
 
-  let subscribeId = 0;
-  const nextSubscribeId = () => {
-    return subscribeId++;
+  let requestId = -2; // Will become 0 after first increment
+  const nextRequestId = () => {
+    requestId += 2; // Client uses even Request IDs (0, 2, 4, 6, ...)
+    return requestId;
   };
 
   // let videoQuality: 'low' | 'medium' | 'high' = 'low';
@@ -55,12 +56,13 @@
     // Subscribe to WARP catalog if enabled
     if (warpCatalogEnabled) {
       const subscribeCatalog: Subscribe = {
-        subscribeId: nextSubscribeId(),
+        requestId: nextRequestId(),
         trackAlias: 242,
         trackNamespace: namespace,
         trackName: WARP_CATALOG_TRACK_NAME,
         subscriberPriority: 20,
         groupOrder: GROUP_ORDER.ASCENDING,
+        forward: SUBSCRIBE_FORWARD.FORWARD,
         filterType: SUBSCRIBE_FILTER.LATEST_OBJECT,
       };
       subscriber.subscribe(subscribeCatalog, 'catalog');
@@ -71,20 +73,22 @@
     const subscribeVideo: Subscribe = {
       trackNamespace: namespace,
       trackName: videoTrackName,
-      subscribeId: nextSubscribeId(),
+      requestId: nextRequestId(),
       trackAlias: 243,
       subscriberPriority: 10,
       groupOrder: GROUP_ORDER.ASCENDING,
+      forward: SUBSCRIBE_FORWARD.FORWARD,
       filterType: SUBSCRIBE_FILTER.LATEST_OBJECT,
     };
     subscriber.subscribe(subscribeVideo, 'video');
     const subscribeAudio: Subscribe = {
       trackNamespace: namespace,
       trackName: audioTrackName,
-      subscribeId: nextSubscribeId(),
+      requestId: nextRequestId(),
       trackAlias: 241,
       subscriberPriority: 1,
       groupOrder: GROUP_ORDER.ASCENDING,
+      forward: SUBSCRIBE_FORWARD.FORWARD,
       filterType: SUBSCRIBE_FILTER.LATEST_OBJECT
     };
     subscriber.subscribe(subscribeAudio, 'audio');

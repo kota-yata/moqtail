@@ -1,23 +1,24 @@
 import { serializeQuicVarInt, stringToVarBytes, concatUint8Arrays, deserializeQuicVarInt, varBytesToString } from 'bytes';
 import { CONTROL_MESSAGE, FETCH_ERROR_REASON } from '../constants';
+import { getUint16, setUint16 } from 'bytes';
 
-export const serializeFetchError = (props: { subscribeId: number, errorCode: FETCH_ERROR_REASON, reasonPhrase: string }) => {
+export const serializeFetchError = (props: { requestId: number, errorCode: FETCH_ERROR_REASON, reasonPhrase: string }) => {
   const messageTypeBytes = serializeQuicVarInt(CONTROL_MESSAGE.FETCH_ERROR);
-  const subscribeIdBytes = serializeQuicVarInt(props.subscribeId);
+  const requestIdBytes = serializeQuicVarInt(props.requestId);
   const errorCodeBytes = serializeQuicVarInt(props.errorCode);
   const reasonPhraseBytes = stringToVarBytes(props.reasonPhrase);
-  const body = concatUint8Arrays([subscribeIdBytes, errorCodeBytes, reasonPhraseBytes]);
-  const length = serializeQuicVarInt(body.byteLength);
+  const body = concatUint8Arrays([requestIdBytes, errorCodeBytes, reasonPhraseBytes]);
+  const length = setUint16(body.byteLength);
   return concatUint8Arrays([messageTypeBytes, length, body]);
 }
 
 export const deserializeFetchError = async (controlReader: ReadableStream) => {
-  await deserializeQuicVarInt(controlReader); // length
-  const subscribeId = await deserializeQuicVarInt(controlReader);
+  await getUint16(controlReader); // length
+  const requestId = await deserializeQuicVarInt(controlReader);
   const errorCode = await deserializeQuicVarInt(controlReader) as FETCH_ERROR_REASON;
   if (!Object.values(FETCH_ERROR_REASON).includes(errorCode)) {
     throw new Error(`Invalid Fetch Error Code: ${errorCode}`);
   }
   const reasonPhrase = await varBytesToString(controlReader);
-  return { subscribeId, errorCode, reasonPhrase };
+  return { requestId, errorCode, reasonPhrase };
 }

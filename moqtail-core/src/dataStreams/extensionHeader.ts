@@ -1,38 +1,44 @@
-import { buffRead, concatUint8Arrays, serializeQuicVarInt, stringToVarBytes, deserializeQuicVarInt, getQuicVarIntLength } from "bytes";
+import { concatUint8Arrays, serializeQuicVarInt, getQuicVarIntLength } from "bytes";
+import { KeyValuePair, serializeKeyValuePair, deserializeKeyValuePair } from "../utils/keyValuePair";
 
 export interface ExtensionHeader {
-  id: number;
-  value: number | string | Uint8Array;
+  type: number;
+  value: number | Uint8Array;
 }
 
 export const serializeExtensionHeader = (props: ExtensionHeader) => {
   if (!props) return new Uint8Array(0);
-  if (props.id === 0) throw new Error('Extension header type 0 is not allowed');
-  const typeBytes = serializeQuicVarInt(props.id);
-  let valueBytes: Uint8Array;
-  if (props.id % 2 === 0) {
-    valueBytes = serializeQuicVarInt(props.value as number);
-  } else if (typeof props.value === 'object') {
-    valueBytes = concatUint8Arrays([serializeQuicVarInt(props.value.byteLength), props.value]);
-  } else {
-    valueBytes = stringToVarBytes(props.value as string);
-  }
-  return concatUint8Arrays([typeBytes, valueBytes]);
+  if (props.type === 0) throw new Error('Extension header type 0 is not allowed');
+  
+  const keyValuePair: KeyValuePair = {
+    type: props.type,
+    value: props.value
+  };
+  
+  return serializeKeyValuePair(keyValuePair);
 }
 
 export const deserializeExtensionHeader = async (reader: ReadableStream): Promise<{ value: ExtensionHeader, byteLength: number }> => {
-  const id = await deserializeQuicVarInt(reader);
-  let byteLength = getQuicVarIntLength(id);
-  let value: string | number | Uint8Array;
-  if (id % 2 === 0) {
-    value = await deserializeQuicVarInt(reader);
-    byteLength += getQuicVarIntLength(value);
+  const keyValuePair = await deserializeKeyValuePair(reader);
+  
+  let byteLength = getQuicVarIntLength(keyValuePair.type);
+  
+  if (keyValuePair.type % 2 === 0) {
+    // Even type: value is a varint
+    byteLength += getQuicVarIntLength(keyValuePair.value as number);
   } else {
-    const len = await deserializeQuicVarInt(reader);
-    value = await buffRead(reader, len);
-    byteLength += getQuicVarIntLength(len) + len;
+    // Odd type: value is a byte array with length prefix
+    const valueBytes = keyValuePair.value as Uint8Array;
+    byteLength += getQuicVarIntLength(valueBytes.length) + valueBytes.length;
   }
-  return { value: { id, value }, byteLength};
+  
+  return {
+    value: {
+      type: keyValuePair.type,
+      value: keyValuePair.value
+    },
+    byteLength
+  };
 }
 
 export const serializeExtensionHeaders = (headers: ExtensionHeader[]): Uint8Array => {

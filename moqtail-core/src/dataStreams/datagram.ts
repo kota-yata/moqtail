@@ -1,6 +1,6 @@
 import { DATAGRAM } from "../constants";
 import { concatUint8Arrays, getUint8, serializeQuicVarInt, setUint8, deserializeQuicVarInt, getQuicVarIntLength } from "bytes";
-import { deserializeExtensionHeader, serializeExtensionHeader, serializeExtensionHeaders } from "./extensionHeader";
+import { deserializeExtensionHeader, serializeExtensionHeaders } from "./extensionHeader";
 import type { ExtensionHeader } from "./extensionHeader";
 
 export const deserializeDatagramType = async (readableStream: ReadableStream): Promise<number> => {
@@ -8,22 +8,28 @@ export const deserializeDatagramType = async (readableStream: ReadableStream): P
 }
 
 export const serializeDatagram = (props: Datagram) => {
-  const typeBytes = serializeQuicVarInt(props.payload.byteLength ? DATAGRAM.OBJECT_DATAGRAM: DATAGRAM.OBJECT_DATAGRAM_STATUS);
+  const typeBytes = serializeQuicVarInt(props.type);
   const trackAliasBytes = serializeQuicVarInt(props.trackAlias);
   const groupIdBytes = serializeQuicVarInt(props.groupId);
   const objectIdBytes = serializeQuicVarInt(props.objectId);
   const publisherPriorityBytes = setUint8(props.publisherPriority);
-  const extensionHeaderBytes = serializeExtensionHeaders(props.extensionHeaders);
+  let extensionHeaderBytes = new Uint8Array(0);
+  if (props.type === DATAGRAM_TYPE.WITH_EXTENSION) {
+    extensionHeaderBytes = serializeExtensionHeaders(props.extensionHeaders);
+  }
   const datagram = concatUint8Arrays([typeBytes, trackAliasBytes, groupIdBytes, objectIdBytes, publisherPriorityBytes, extensionHeaderBytes, props.payload]);
   return datagram;
 }
 
 export const deserializeDatagramHeader = async (readableStream: ReadableStream): Promise<Datagram> => {
   const ret: Datagram = {} as Datagram;
+  ret.type = await deserializeQuicVarInt(readableStream) as DATAGRAM_TYPE;
   ret.trackAlias = await deserializeQuicVarInt(readableStream);
   ret.groupId = await deserializeQuicVarInt(readableStream);
   ret.objectId = await deserializeQuicVarInt(readableStream);
-  ret.publisherPriority = await getUint8(readableStream);
+  ret.publisherPriority = await getUint8(readableStream)
+  ret.extensionHeaders = [];
+  if (ret.type === DATAGRAM_TYPE.WITHOUT_EXTENSION) return ret;
   let extensionHeadersLength = await deserializeQuicVarInt(readableStream);
   ret.extensionHeaders = [];
   while (extensionHeadersLength > 0) {
@@ -34,7 +40,14 @@ export const deserializeDatagramHeader = async (readableStream: ReadableStream):
   return ret;
 }
 
+export const DATAGRAM_TYPE = {
+  WITHOUT_EXTENSION: 0x0,
+  WITH_EXTENSION: 0x1,
+}
+export type DATAGRAM_TYPE = ObjectValueList<typeof DATAGRAM_TYPE>;
+
 export interface Datagram {
+  type: DATAGRAM_TYPE,
   trackAlias: number,
   groupId: number,
   objectId: number,
