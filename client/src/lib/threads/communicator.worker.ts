@@ -195,15 +195,9 @@ class MoQTCommunicator {
         Mogger.error('Stream reader closed');
         break;
       }
-      const streamType = await readControlMessageType(readableStream);
-      Mogger.info(`Stream type: ${streamType}`);
-      switch (streamType) {
-      case STREAM.SUBGROUP_HEADER:
-        const subgroupHeader = await deserializeSubgroupHeader(readableStream);
-        postMessage({ type: `stream-${streamType}`, data: subgroupHeader });
+      const subgroupHeader = await deserializeSubgroupHeader(readableStream);
+        postMessage({ type: `subgroup-header`, data: subgroupHeader });
         this.readSubgroupObject(readableStream, subgroupHeader.trackAlias, subgroupHeader.subgroupId, subgroupHeader.groupId);
-        break;
-      }
       reader.releaseLock();
     }
   }

@@ -162,7 +162,7 @@ export class Subscriber {
       subscriptionError.decoder.terminate();
       this.communicator.postMessage({ type: 'closeStream', data: { trackAlias: msg.trackAlias } });
       break;
-    case `stream-${STREAM.SUBGROUP_HEADER}`:
+    case `subgroup-header`:
       const subgroupHeader: SubgroupHeader = message.data.data;
       sub = this.getSubscriptionByTrackAlias(subgroupHeader.trackAlias);
       Mogger.info(`Subgroup stream with trackAlias:${subgroupHeader.trackAlias} received`);
