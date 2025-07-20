@@ -196,6 +196,7 @@ class MoQTCommunicator {
         break;
       }
       const streamType = await readControlMessageType(readableStream);
+      Mogger.info(`Stream type: ${streamType}`);
       switch (streamType) {
       case STREAM.SUBGROUP_HEADER:
         const subgroupHeader = await deserializeSubgroupHeader(readableStream);

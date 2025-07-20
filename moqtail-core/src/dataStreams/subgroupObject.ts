@@ -4,7 +4,7 @@ import { deserializeExtensionHeader, serializeExtensionHeaders, type ExtensionHe
 
 export const serializeSubgroupObject = (props: SubgroupObject) => {
   const objectIdBytes = serializeQuicVarInt(props.objectId);
-  const extensionHeaderBytes = serializeExtensionHeaders(props.extensionHeaders);
+  const extensionHeaderBytes = serializeExtensionHeaders(props.extensionHeaders); // assuming subgroup header's type is **_WITH_EXTENSION
   const payloadLengthBytes = serializeQuicVarInt(props.payload.byteLength);
   let objectStatusBytes = new Uint8Array(0);
   if (props.payload.byteLength === 0) {
