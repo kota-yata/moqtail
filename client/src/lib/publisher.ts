@@ -12,6 +12,8 @@ import {
   captureTimestampToExtensionHeader,
   WARP_CATALOG_TRACK_NAME,
   GROUP_ORDER,
+  SUBGROUP_HEADER_TYPE,
+  DATAGRAM_TYPE,
 } from 'moqtail';
 import type { ServerSetup, AnnounceOk, Subscribe, Unsubscribe, ExtensionHeader, Datagram } from 'moqtail';
 // @ts-ignore
@@ -191,6 +193,7 @@ export class Publisher {
   }
   sendCatalog(alias: number, catalogData: Uint8Array) {
     const datagram: Datagram = {
+      type: DATAGRAM_TYPE.WITHOUT_EXTENSION,
       trackAlias: alias,
       groupId: 0,
       objectId: Date.now(),
@@ -245,11 +248,8 @@ export class Publisher {
         this.subscribeDone(sub.requestId, track);
         this.trackManager.removeSubscriber(sub.requestId);
       });
-
       // Remove from trackManager (warpCatalogManager will read updated state)
       this.trackManager.removeTrack(trackName);
-
-      // Update catalog
       if (this.warpCatalogManager.supportsDeltaUpdates()) {
         const patchData = this.warpCatalogManager.createRemoveTrackPatch(trackName, this.namespace.join('/'));
         if (patchData) {
@@ -262,7 +262,6 @@ export class Publisher {
     }
   }
   terminateWarpSession() {
-    // Publish terminating catalog (empty tracks)
     const terminatingCatalog = this.warpCatalogManager.createTerminatingCatalog();
     this.broadcastCatalog(terminatingCatalog);
   }
@@ -280,8 +279,7 @@ export class Publisher {
       // publisher priority must be between 0-255
       return (subgroupId + 10 % 256);
     } else {
-      // catalog tracks are not prioritized
-      return 255;
+      return 255; // catalog tracks are not prioritized
     }
   }
   private sendEndOfGroup(lastSubgroupId: number, lastObjectId: number) {
@@ -302,6 +300,7 @@ export class Publisher {
     Mogger.debug(`Creating subgroup stream for subgroupId ${subgroupId} with aliases ${aliases}`);
     for (const alias of aliases) {
       const subgroupHeader = serializeSubgroupHeader({
+        type: SUBGROUP_HEADER_TYPE.SUBGROUP_FIELD_WITH_EXTENSION,
         trackAlias: alias,
         subgroupId,
         groupId: targetTrack.largestGroupId,
@@ -373,6 +372,7 @@ export class Publisher {
     const interestedAliases = this.getAliasOfSubscribersWithLatestObjectFilter(targetTrack);
     for (const alias of interestedAliases) {
       const datagram: Datagram = {
+        type: extensionHeaders.length > 0 ? DATAGRAM_TYPE.WITH_EXTENSION : DATAGRAM_TYPE.WITHOUT_EXTENSION,
         trackAlias: alias,
         groupId: targetTrack.largestGroupId,
         objectId: targetTrack.largestObjectId,
@@ -451,6 +451,7 @@ export class Publisher {
       const aliases = this.getAliasOfSubscribersWithLatestObjectFilter(targetTrack);
       for (const alias of aliases) {
         const datagram: Datagram = {
+          type: extensionHeaders.length > 0 ? DATAGRAM_TYPE.WITH_EXTENSION : DATAGRAM_TYPE.WITHOUT_EXTENSION,
           trackAlias: alias,
           groupId: targetTrack.largestGroupId,
           objectId: targetTrack.largestObjectId,
@@ -615,13 +616,15 @@ export class Publisher {
       }
       const audioChunkBytes = serializeEncodedChunk(audioChunkMsg.chunk);
       const interestedAliases = this.getAliasOfSubscribersWithLatestObjectFilter(audioTrack);
+      const extensionHeaders = audioChunkMsg.metadata.decoderConfig ? [audioDecoderConfigToExtensionHeader(audioChunkMsg.metadata.decoderConfig)]: [];
       for (const alias of interestedAliases) {
         const datagram: Datagram = {
+          type: extensionHeaders.length > 0 ? DATAGRAM_TYPE.WITH_EXTENSION : DATAGRAM_TYPE.WITHOUT_EXTENSION,
           trackAlias: alias,
           groupId: audioTrack.largestGroupId,
           objectId: audioTrack.largestObjectId,
           publisherPriority: this.getPublisherPriority(audioTrack.type),
-          extensionHeaders: audioChunkMsg.metadata.decoderConfig ? [audioDecoderConfigToExtensionHeader(audioChunkMsg.metadata.decoderConfig)]: [],
+          extensionHeaders: extensionHeaders,
           payload: audioChunkBytes,
         };
         this.sendDatagram(datagram);

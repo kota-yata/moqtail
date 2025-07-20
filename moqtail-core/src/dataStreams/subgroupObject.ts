@@ -1,6 +1,6 @@
 import type { OBJECT_STATUS } from "../constants";
 import { concatUint8Arrays, serializeQuicVarInt, deserializeQuicVarInt } from "bytes";
-import { deserializeExtensionHeader, serializeExtensionHeader, serializeExtensionHeaders, type ExtensionHeader } from "./extensionHeader";
+import { deserializeExtensionHeader, serializeExtensionHeaders, type ExtensionHeader } from "./extensionHeader";
 
 export const serializeSubgroupObject = (props: SubgroupObject) => {
   const objectIdBytes = serializeQuicVarInt(props.objectId);
