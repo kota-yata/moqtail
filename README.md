@@ -5,6 +5,19 @@ moqtail is a client implementation of Media over QUIC Transport protocol (MoQT).
 
 This is the root directory of the moqtail projects. The core library lives under the `moqtail-core` workspace. Run `make install` to create symbolic links so you can develop the client and core packages together.
 
+### Supported messages
+- [x] CLIENT_SETUP
+- [x] SERVER_SETUP
+- [x] SUBSCRIBE
+- [x] SUBCSRIBE_OK
+- [x] SUBSCRIBE_DONE
+- [x] UNSUBSCRIBE
+- [x] ANNOUNCE
+- [x] ANNOUNCE_OK
+- [x] UNANNOUNCE
+- [x] Datagram
+- [x] Subgroup Object
+
 ### Repository Structure
 
 - **bytes/**
