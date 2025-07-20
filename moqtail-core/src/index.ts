@@ -40,5 +40,6 @@ export * from './packagers/mi/miExtensionHeaders';
 export * from './utils/stream';
 export * from './utils/location';
 export * from './utils/keyValuePair';
+export * from './utils/authToken';
 export * from './utils/reasonPhrase';
 export * from './utils/namespace';

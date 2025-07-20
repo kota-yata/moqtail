@@ -13,7 +13,8 @@ import {
   WARP_CATALOG_TRACK_NAME,
   GROUP_ORDER,
   DATAGRAM_TYPE,
-  STREAM
+  STREAM,
+  AUTH_TOKEN_ALIAS_TYPE
 } from 'moqtail';
 import type { ServerSetup, AnnounceOk, Subscribe, Unsubscribe, ExtensionHeader, Datagram } from 'moqtail';
 // @ts-ignore
@@ -144,7 +145,14 @@ export class Publisher {
     const requestId = this.getNextRequestId();
     this.requestIdToNamespace.set(requestId, namespace);
     const msg = serializeAnnounce({ requestId, trackNamespace: namespace, parameters: [
-      { type: PARAMETER.AUTHORIZATION_INFO.KEY, value: 'ilovemoxygen' }
+      {
+        type: PARAMETER.AUTHORIZATION_INFO.KEY,
+        value: {
+          aliasType: AUTH_TOKEN_ALIAS_TYPE.USE_VALUE,
+          tokenType: 0,
+          tokenValue: 'ilovemoxygen'
+        }
+      }
     ] });
     this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
   }

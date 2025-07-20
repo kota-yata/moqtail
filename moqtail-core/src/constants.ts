@@ -1,15 +1,7 @@
 export const MOQT_DRAFT11_VERSION = 0xff00000B;
 
 export const PARAMETER = {
-  AUTHORIZATION_INFO: { 
-    KEY: 0x01,
-    TYPE: {
-      DELETE: 0x0,
-      REGISTER: 0x1,
-      USE_ALIAS: 0x2,
-      USE_VALUE: 0x3,
-    }
-  },
+  AUTHORIZATION_INFO: { KEY: 0x01 },
   DELIVERY_TIMEOUT: { KEY: 0x02 },
   MAX_CACHE_DURATION: { KEY: 0x04 },
   SETUP: {

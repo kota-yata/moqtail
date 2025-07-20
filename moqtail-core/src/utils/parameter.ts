@@ -1,10 +1,11 @@
 import { CONTROL_MESSAGE, PARAMETER } from "../constants";
 import { concatUint8Arrays, serializeQuicVarInt, deserializeQuicVarInt } from 'bytes';
 import { serializeKeyValuePair, deserializeKeyValuePair, type KeyValuePair } from './keyValuePair';
+import { serializeAuthToken } from "./authToken";
 
 export interface Parameter {
   type: number,
-  value: string | number
+  value: any
 }
 
 export const serializeParams = (params: Parameter[]): Uint8Array => {
@@ -19,12 +20,15 @@ export const serializeParams = (params: Parameter[]): Uint8Array => {
       }
       keyValuePair = { type: param.type, value: param.value };
     } else {
-      // Odd type: value should be a string/bytes with length prefix
-      if (typeof param.value !== 'string') {
-        throw new Error(`Odd parameter type ${param.type} requires string value`);
+      let valueBytes: Uint8Array;
+      switch (param.type) {
+        case PARAMETER.AUTHORIZATION_INFO.KEY:
+          valueBytes = serializeAuthToken(param.value);
+          break;
+        default:
+          const encoder = new TextEncoder();
+          valueBytes = encoder.encode(param.value);
       }
-      const encoder = new TextEncoder();
-      const valueBytes = encoder.encode(param.value);
       keyValuePair = { type: param.type, value: valueBytes };
     }
     
