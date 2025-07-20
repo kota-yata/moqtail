@@ -296,6 +296,11 @@ export class Publisher {
     if (emptyTracks.length > 0) {
       emptyTracks.forEach(track => {
         const targetEncoder = track.type === 'video' ? this.videoEncoders[track.name] : this.audioEncoders[track.name];
+        if (!targetEncoder) {
+          // This is possible if the handler for "session closed" is already called
+          Mogger.debug(`Encoder for track ${track.name} not found, skipping stop`);
+          return;
+        }
         targetEncoder.postMessage({ type: 'stop', data: null });
         // targetEncoder.terminate();
         Mogger.debug(`Stopping encoder for track ${track.name}`);
@@ -567,10 +572,12 @@ export class Publisher {
         encoder.postMessage({ type: 'stop', data: null });
         encoder.terminate();
       }
+      this.videoEncoders = {};
       for (const encoder of Object.values(this.audioEncoders)) {
         encoder.postMessage({ type: 'stop', data: null });
         encoder.terminate();
       }
+      this.audioEncoders = {};
       break;
     default:
       Mogger.error(`Unexpected message type from communicator ${message.data.type}`);
