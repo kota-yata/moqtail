@@ -1,7 +1,7 @@
 import { Mogger } from './utils/mogger';
 import { WarpCatalogManager } from './warpCatalogManager';
-import { CONTROL_MESSAGE, deserializeVideoDecoderConfig, LOC_EXTENSION_HEADER_TYPE, MOQT_DRAFT11_VERSION, serializeClientSetup, serializeSubscribe, STREAM, deserializeAudioDecoderConfig, serializeUnsubscribe, OBJECT_STATUS, deserializeDatagramFragmentInfo, deserializeEncodedChunkFromArray, WARP_CATALOG_TRACK_NAME, PARAMETER } from 'moqtail';
-import type { Subscribe, ServerSetup, SubscribeOk, SubgroupHeader, SubgroupObject, SubscribeError, Datagram } from 'moqtail';
+import { CONTROL_MESSAGE, deserializeVideoDecoderConfig, LOC_EXTENSION_HEADER_TYPE, MOQT_DRAFT11_VERSION, serializeClientSetup, serializeSubscribe, deserializeAudioDecoderConfig, serializeUnsubscribe, deserializeDatagramFragmentInfo, deserializeEncodedChunkFromArray, WARP_CATALOG_TRACK_NAME, PARAMETER } from 'moqtail';
+import type { Subscribe, ServerSetup, SubscribeOk, SubgroupHeader, SubgroupObject, SubscribeError, Datagram, SubscribeDone } from 'moqtail';
 import { moqVideoTransmissionLatencyStore, ringStats, bitrateStore } from './utils/store';
 
 import { DatagramBuffer, BufferedDatagram } from './utils/datagramBuffer';
@@ -160,7 +160,20 @@ export class Subscriber {
       }
       this.subscription = this.subscription.filter(sub => sub.subscribe.trackAlias !== msg.trackAlias);
       subscriptionError.decoder.terminate();
-      this.communicator.postMessage({ type: 'closeStream', data: { trackAlias: msg.trackAlias } });
+      // this.communicator.postMessage({ type: 'closeStream', data: { trackAlias: msg.trackAlias } });
+      break;
+    case `ctrl-${CONTROL_MESSAGE.SUBSCRIBE_DONE}`:
+      msg = message.data.data as SubscribeDone;
+      Mogger.info(`Subscribe done for requestId ${msg.requestId} with status ${msg.statusCode}`);
+      const subscriptionDone = this.subscription.find(sub => sub.subscribe.requestId === msg.requestId);
+      if (!subscriptionDone) {
+        Mogger.error(`Unknown subscribeDone with requestId:${msg.requestId} received`); 
+        this.communicator.postMessage({ type: 'closeSession', data: null });
+        break;
+      }
+      this.subscription = this.subscription.filter(sub => sub.subscribe.requestId !== msg.requestId);
+      subscriptionDone.decoder.terminate();
+      // this.communicator.postMessage({ type: 'closeStream', data: { trackAlias: subscriptionDone.subscribe.trackAlias } });
       break;
     case `subgroup-header`:
       const subgroupHeader: SubgroupHeader = message.data.data;
