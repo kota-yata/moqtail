@@ -1,0 +1,17 @@
+{
+  "name": "conference",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test" 
+  },
+  "dependencies": {
+    "moqtail": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
