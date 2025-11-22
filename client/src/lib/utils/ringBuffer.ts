@@ -1,4 +1,5 @@
-import { Mogger } from './mogger';
+import { Logger } from 'tslog';
+const logger = new Logger({ name: 'RingBuffer' });
 
 /**
  * A circular buffer implementation for Float32 audio data.
@@ -61,7 +62,7 @@ export class Float32RingBuffer {
 
     const freeSpace = this.free();
     if (freeSpace === 0) {
-      Mogger.warn('Ring buffer is full, cannot write data');
+      logger.warn('Ring buffer is full, cannot write data');
       return 0;
     }
 
@@ -69,7 +70,7 @@ export class Float32RingBuffer {
     const toWrite = Math.min(data.length, freeSpace);
 
     if (toWrite < data.length) {
-      Mogger.warn(`Buffer has space for ${toWrite} samples, but ${data.length} were provided. Truncating.`);
+      logger.warn(`Buffer has space for ${toWrite} samples, but ${data.length} were provided. Truncating.`);
     }
 
     // Write the data in up to two parts (before and after wrap-around)
@@ -108,7 +109,7 @@ export class Float32RingBuffer {
     const toRead = Math.min(length, this.size);
 
     if (toRead < length) {
-      Mogger.debug(`Requested ${length} samples but only ${toRead} available`);
+      logger.debug(`Requested ${length} samples but only ${toRead} available`);
     }
 
     const result = new Float32Array(toRead);
@@ -195,7 +196,7 @@ export class Float32RingBuffer {
     if (data.length === 0) return 0;
 
     if (data.length > this.capacity) {
-      Mogger.warn(`Data length ${data.length} exceeds buffer capacity ${this.capacity}. Only writing last ${this.capacity} samples.`);
+      logger.warn(`Data length ${data.length} exceeds buffer capacity ${this.capacity}. Only writing last ${this.capacity} samples.`);
       // If data is larger than buffer, only keep the most recent samples
       return this.writeWithOverflow(data.subarray(data.length - this.capacity));
     }
@@ -204,7 +205,7 @@ export class Float32RingBuffer {
     const spaceNeeded = data.length - this.free();
     if (spaceNeeded > 0) {
       this.skip(spaceNeeded);
-      Mogger.debug(`Discarded ${spaceNeeded} samples to make room for new data`);
+      logger.debug(`Discarded ${spaceNeeded} samples to make room for new data`);
     }
 
     return this.write(data);

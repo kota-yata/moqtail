@@ -1,4 +1,4 @@
-import { Mogger } from './utils/mogger';
+import { Logger } from 'tslog';
 import { WarpCatalogManager } from './warpCatalogManager';
 import { CONTROL_MESSAGE, deserializeVideoDecoderConfig, LOC_EXTENSION_HEADER_TYPE, MOQT_DRAFT11_VERSION, serializeClientSetup, serializeSubscribe, deserializeAudioDecoderConfig, serializeUnsubscribe, deserializeDatagramFragmentInfo, deserializeEncodedChunkFromArray, WARP_CATALOG_TRACK_NAME, PARAMETER } from 'moqtail';
 import type { Subscribe, ServerSetup, SubscribeOk, SubgroupHeader, SubgroupObject, SubscribeError, Datagram, SubscribeDone } from 'moqtail';
@@ -18,6 +18,7 @@ import AudioDecoderWorker from './threads/audio/decoder.worker?worker';
 import AudioWorkletURL from './threads/audio/processor.worker?worker&url';
 
 export class Subscriber {
+  private logger = new Logger({ name: 'Subscriber' });
   private supportedVersions = [MOQT_DRAFT11_VERSION];
   private selectedVersion = 0;
   private subscription: RegisteredSubscription[] = [];
@@ -72,7 +73,7 @@ export class Subscriber {
     // Handle WARP catalog updates
     const catalog = this.warpCatalogManager.updateCatalogFromData(payload);
     if (catalog) {
-      Mogger.info(`WARP catalog updated with ${catalog.tracks.length} tracks`);
+      this.logger.info(`WARP catalog updated with ${catalog.tracks.length} tracks`);
     }
   }
   stopAudio() {
@@ -90,7 +91,7 @@ export class Subscriber {
   async setAudioContext() {
     const audioCtx = new AudioContext({ sampleRate: 48000 }); // TODO: use the sample rate from the server
     await audioCtx.audioWorklet.addModule(AudioWorkletURL).catch((e) => {
-      Mogger.error(`Failed to load audio worklet module: ${e}`);
+      this.logger.error(`Failed to load audio worklet module: ${e}`);
       this.communicator.postMessage({ type: 'closeSession', data: null });
     });
     this.audioNode = new AudioWorkletNode(audioCtx, 'audio-playback-processor');
@@ -108,7 +109,7 @@ export class Subscriber {
       const err = `Subgroup Objcet with alias:${trackAlias} received before subscribeOk`;
       // Receiving objects before subscribeOk is not an explicit protocol violation,
       // so we log it instead of throwing an error
-      Mogger.error(err);
+      this.logger.error(err);
     }
     return sub;
   }
@@ -129,19 +130,19 @@ export class Subscriber {
     case `ctrl-${CONTROL_MESSAGE.SERVER_SETUP}`:
       msg = message.data.data as ServerSetup;
       if (!this.supportedVersions.includes(msg.selectedVersion)) {
-        Mogger.error('Server does not support any of the versions we support');
+        this.logger.error('Server does not support any of the versions we support');
         this.communicator.postMessage({ type: 'closeSession', data: null });
         break;
       }
       this.selectedVersion = msg.selectedVersion;
-      Mogger.info(`Setup successful with version ${msg.selectedVersion}`);
+      this.logger.info(`Setup successful with version ${msg.selectedVersion}`);
       break;
     case `ctrl-${CONTROL_MESSAGE.SUBSCRIBE_OK}`:
       msg = message.data.data as SubscribeOk;
-      Mogger.info(`Subscribe successful for ${msg.requestId}`);
+      this.logger.info(`Subscribe successful for ${msg.requestId}`);
       const subscription = this.subscription.find(sub => sub.subscribe.requestId === msg.requestId);
       if (!subscription) {
-        Mogger.error(`Unknown subscribeOk with requestId:${msg.requestId} received`);
+        this.logger.error(`Unknown subscribeOk with requestId:${msg.requestId} received`);
         this.communicator.postMessage({ type: 'closeSession', data: null });
         break;
       }
@@ -151,10 +152,10 @@ export class Subscriber {
       break;
     case `ctrl-${CONTROL_MESSAGE.SUBSCRIBE_ERROR}`:
       msg = message.data.data as SubscribeError;
-      Mogger.error(`Subscribe error for alias ${msg.trackAlias}: ${msg.reasonPhrase}`);
+      this.logger.error(`Subscribe error for alias ${msg.trackAlias}: ${msg.reasonPhrase}`);
       const subscriptionError = this.subscription.find(sub => sub.subscribe.trackAlias === msg.trackAlias);
       if (!subscriptionError) {
-        Mogger.error(`Unknown subscribeError with trackAlias:${msg.trackAlias} received`);
+        this.logger.error(`Unknown subscribeError with trackAlias:${msg.trackAlias} received`);
         this.communicator.postMessage({ type: 'closeSession', data: null });
         break;
       }
@@ -164,10 +165,10 @@ export class Subscriber {
       break;
     case `ctrl-${CONTROL_MESSAGE.SUBSCRIBE_DONE}`:
       msg = message.data.data as SubscribeDone;
-      Mogger.info(`Subscribe done for requestId ${msg.requestId} with status ${msg.statusCode}`);
+      this.logger.info(`Subscribe done for requestId ${msg.requestId} with status ${msg.statusCode}`);
       const subscriptionDone = this.subscription.find(sub => sub.subscribe.requestId === msg.requestId);
       if (!subscriptionDone) {
-        Mogger.error(`Unknown subscribeDone with requestId:${msg.requestId} received`); 
+        this.logger.error(`Unknown subscribeDone with requestId:${msg.requestId} received`); 
         this.communicator.postMessage({ type: 'closeSession', data: null });
         break;
       }
@@ -178,7 +179,7 @@ export class Subscriber {
     case `subgroup-header`:
       const subgroupHeader: SubgroupHeader = message.data.data;
       sub = this.getSubscriptionByTrackAlias(subgroupHeader.trackAlias);
-      Mogger.info(`Subgroup stream with trackAlias:${subgroupHeader.trackAlias} received`);
+      this.logger.info(`Subgroup stream with trackAlias:${subgroupHeader.trackAlias} received`);
       if (sub.type === 'video') {
         this.subgroupToGroup.set(subgroupHeader.subgroupId, subgroupHeader.groupId);
         if (this.currentVideoGroupId === null || this.currentVideoGroupId !== subgroupHeader.groupId) {
@@ -191,7 +192,7 @@ export class Subscriber {
       const subgroupId = message.data.data.subgroupId as number;
       const groupId = this.subgroupToGroup.get(subgroupId);
       if (this.videoWaitingForKeyFrame && encodedChunkInit.type !== 'key') {
-        Mogger.debug('Waiting for video key frame...');
+        this.logger.debug('Waiting for video key frame...');
         break;
       }
       this.videoWaitingForKeyFrame = false;
@@ -252,7 +253,7 @@ export class Subscriber {
         if (entry.payloads.filter(p => p).length === entry.total) {
           const payload = concatUint8Arrays(entry.payloads as Uint8Array[]);
           const encodedChunkInit = deserializeEncodedChunkFromArray(payload);
-          Mogger.debug(`Datagram object id ${datagramObject.header.objectId} received with all fragments`);
+          this.logger.debug(`Datagram object id ${datagramObject.header.objectId} received with all fragments`);
           const combined: BufferedDatagram = { header: entry.header, encodedChunkInit };
           this.datagramFragments.delete(key);
           datagramObject.header = combined.header;
@@ -275,7 +276,7 @@ export class Subscriber {
         }
       } else if (sub.type === 'audio') {
         if (this.audioWaitingForKeyFrame && datagramObject.encodedChunkInit.type !== 'key') {
-          Mogger.debug('Waiting for audio key frame...');
+          this.logger.debug('Waiting for audio key frame...');
           break;
         }
         this.audioWaitingForKeyFrame = false;
@@ -295,7 +296,7 @@ export class Subscriber {
       }
       break;
     case 'error':
-      Mogger.error(`Subscriber communicator: ${message.data.data}`);
+      this.logger.error(`Subscriber communicator: ${message.data.data}`);
       break;
     }
   }
@@ -326,7 +327,7 @@ export class Subscriber {
       ringStats.set(stats);
       break;
     case 'error':
-      Mogger.error(`Audio processor error: ${message.data.data}`);
+      this.logger.error(`Audio processor error: ${message.data.data}`);
       break;
     }
   }

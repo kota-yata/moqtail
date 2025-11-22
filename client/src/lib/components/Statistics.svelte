@@ -1,8 +1,10 @@
 <script>
   import { moqVideoTransmissionLatencyStore, bitrateStore } from '$lib/utils/store';
-  import { Mogger } from '$lib/utils/mogger';
+  import { Logger } from 'tslog';
 
   let cpuLoad = 'Compute Pressure API not supported';
+
+  const logger = new Logger({ name: 'Statistics' });
 
   const pressureObserverCallback = (records) => {
     const lastRecord = records[records.length - 1];
@@ -14,7 +16,7 @@
     const observer = new PressureObserver(pressureObserverCallback);
     observer.observe('cpu', { sampleInterval: 1000, });
   } catch (error) {
-    Mogger.error('PressureObserver not supported:', error);
+    logger.error('PressureObserver not supported:', error);
   }
 </script>
 

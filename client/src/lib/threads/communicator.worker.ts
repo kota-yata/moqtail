@@ -1,4 +1,4 @@
-import { Mogger } from '$lib/utils/mogger';
+import { Logger } from 'tslog';
 import { CONTROL_MESSAGE, deserializeAnnounceError, deserializeAnnounceOk, deserializeDatagramHeader, deserializeDatagramType, deserializeEncodedChunk, deserializeServerSetup, deserializeSubgroupHeader, deserializeSubgroupObjectHeader, deserializeSubscribe, deserializeSubscribeDone, deserializeSubscribeError, deserializeSubscribeOk, deserializeUnsubscribe, OBJECT_STATUS, readControlMessageType, STREAM, readStream, DATAGRAM_TYPE, deserializeStreamType } from 'moqtail';
 
 export const COMMUNICATOR_STATE = {
@@ -50,7 +50,7 @@ class MoQTCommunicator {
   }
   async sendControlMessage(data: Uint8Array) {
     if (this.state === COMMUNICATOR_STATE.STOPPED) {
-      Mogger.error('Cannot send control messages as the session is already closed');
+      logger.error('Cannot send control messages as the session is already closed');
       return;
     }
     try {
@@ -60,18 +60,18 @@ class MoQTCommunicator {
     } catch (err) {
       postMessage({ type: 'error', data: `Error sending control message: ${err}` });
     }
-    Mogger.debug('Control message sent');
+    logger.debug('Control message sent');
   }
   async createSubgroupStream({ subgroupId, subgroupHeader }: { subgroupId: number, subgroupHeader: Uint8Array }) {
     if (this.state === COMMUNICATOR_STATE.STOPPED) {
-      Mogger.error('Cannot create subgroup streams as the session is already closed');
+      logger.error('Cannot create subgroup streams as the session is already closed');
       return;
     }
     try {
       this.streams.set(subgroupId, (await this.wt.createUnidirectionalStream()).getWriter());
       const writer = this.streams.get(subgroupId);
       await writer.write(subgroupHeader);
-      Mogger.debug('Stream created');
+      logger.debug('Stream created');
     } catch (err) {
       postMessage({ type: 'error', data: `Error creating subgroup stream: ${err}` });
 
@@ -91,7 +91,7 @@ class MoQTCommunicator {
       if (isLast) {
         await writer.close();
         this.streams.delete(subgroupId);
-        Mogger.debug(`Stream ${subgroupId} closed`);
+        logger.debug(`Stream ${subgroupId} closed`);
       }
     } catch (err) {
       postMessage({ type: 'error', data: `Error sending subgroup object: ${err}` });
@@ -144,7 +144,7 @@ class MoQTCommunicator {
         break;
       case DATAGRAM_TYPE.DATAGRAM_STATUS_WITHOUT_EXTENSION:
       case DATAGRAM_TYPE.DATAGRAM_STATUS_WITH_EXTENSION:
-        Mogger.debug('Datagram status received');
+        logger.debug('Datagram status received');
         // TODO: implement object status handling
         break;
     }
@@ -187,7 +187,7 @@ class MoQTCommunicator {
   }
   async startStreamReadLoop() {
     if (this.state & COMMUNICATOR_STATE.READING_STREAM) {
-      Mogger.debug('duplicated startStreamReadLoop call. aborting');
+      logger.debug('duplicated startStreamReadLoop call. aborting');
       return;
     }
     this.state = this.state | COMMUNICATOR_STATE.READING_STREAM;
@@ -195,13 +195,13 @@ class MoQTCommunicator {
       const reader = this.wt.incomingUnidirectionalStreams.getReader();
       const { value: readableStream, done } = await reader.read();
       if (done || !readableStream) {
-        Mogger.error('Stream reader closed');
+        logger.error('Stream reader closed');
         break;
       }
       const headerType = await deserializeStreamType(readableStream);
       switch (headerType) {
         case STREAM.FETCH_HEADER:
-          Mogger.debug('Fetch header received');
+          logger.debug('Fetch header received');
           break;
         default:
           const subgroupHeader = await deserializeSubgroupHeader(headerType, readableStream);
@@ -213,7 +213,7 @@ class MoQTCommunicator {
   }
   async startDatagramReadLoop() {
     if (this.state & COMMUNICATOR_STATE.READING_DATAGRAM) {
-      Mogger.debug('duplicated startDatagramReadLoop call. aborting');
+      logger.debug('duplicated startDatagramReadLoop call. aborting');
       return;
     }
     this.state = this.state | COMMUNICATOR_STATE.READING_DATAGRAM;
@@ -240,3 +240,4 @@ const workerInstance = new MoQTCommunicator();
 self.addEventListener('message', workerInstance.onMessage.bind(workerInstance));
 
 export {};
+const logger = new Logger({ name: 'CommunicatorWorker' });

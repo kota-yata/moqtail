@@ -25,9 +25,10 @@ import VideoEncoderWorker from './threads/video/encoder.worker?worker';
 import AudioEncoderWorker from './threads/audio/encoder.worker?worker';
 import { TrackManager } from './trackManager';
 import { WarpCatalogManager } from './warpCatalogManager';
-import { Mogger } from './utils/mogger';
+import { Logger } from 'tslog';
 
 export class Publisher {
+  private logger = new Logger({ name: 'Publisher' });
   private communicator: Worker;
   private videoEncoders: { [key: string]: Worker } = {};
   private audioEncoders: { [key: string]: Worker } = {};
@@ -72,14 +73,14 @@ export class Publisher {
     if (track.type === 'video') {
       const processor = new MediaStreamTrackProcessor({ track: mediaTrack as MediaStreamVideoTrack });
       if (!this.videoEncoders[track.name]) {
-        Mogger.error(`Video encoder for track ${track.name} not found`);
+        this.logger.error(`Video encoder for track ${track.name} not found`);
         return;
       }
       this.videoEncoders[track.name].postMessage({ type: 'capture', data: processor.readable }, [processor.readable]);
     } else if (track.type === 'audio') {
       const processor = new MediaStreamTrackProcessor({ track: mediaTrack as MediaStreamAudioTrack });
       if (!this.audioEncoders[track.name]) {
-        Mogger.error(`Audio encoder for track ${track.name} not found`);
+        this.logger.error(`Audio encoder for track ${track.name} not found`);
         return;
       }
       this.audioEncoders[track.name].postMessage({ type: 'capture', data: processor.readable }, [processor.readable]);
@@ -88,7 +89,7 @@ export class Publisher {
   replaceMediaTrack(trackName: string, mediaTrack: MediaStreamTrack) {
     const track = this.trackManager.getTrack({ name: trackName });
     if (!track) {
-      Mogger.error(`Track ${trackName} not found`);
+      this.logger.error(`Track ${trackName} not found`);
       return;
     }
     let encoder: Worker;
@@ -100,7 +101,7 @@ export class Publisher {
       delete this.audioEncoders[track.name];
     }
     if (!encoder) {
-      Mogger.error(`Encoder for track ${track.name} not found`);
+      this.logger.error(`Encoder for track ${track.name} not found`);
       return;
     }
     encoder.postMessage({ type: 'stop', data: null });
@@ -114,7 +115,7 @@ export class Publisher {
   stopStream(trackName: string) {
     const track = this.trackManager.getTrack({ name: trackName });
     if (!track) {
-      Mogger.error(`Track ${trackName} not found`);
+      this.logger.error(`Track ${trackName} not found`);
       return;
     }
     const encoder = track.type === 'video' ? this.videoEncoders[track.name] : this.audioEncoders[track.name];
@@ -308,12 +309,12 @@ export class Publisher {
         const targetEncoder = track.type === 'video' ? this.videoEncoders[track.name] : this.audioEncoders[track.name];
         if (!targetEncoder) {
           // This is possible if the handler for "session closed" is already called
-          Mogger.debug(`Encoder for track ${track.name} not found, skipping stop`);
+          this.logger.debug(`Encoder for track ${track.name} not found, skipping stop`);
           return;
         }
         targetEncoder.postMessage({ type: 'stop', data: null });
         // targetEncoder.terminate();
-        Mogger.debug(`Stopping encoder for track ${track.name}`);
+        this.logger.debug(`Stopping encoder for track ${track.name}`);
       });
     }
   }
@@ -323,7 +324,7 @@ export class Publisher {
   }
   private createSubgroupStream(subgroupId: number, targetTrack: Track) {
     const aliases = this.getAliasOfSubscribersWithLatestObjectFilter(targetTrack);
-    Mogger.debug(`Creating subgroup stream for subgroupId ${subgroupId} with aliases ${aliases}`);
+    this.logger.debug(`Creating subgroup stream for subgroupId ${subgroupId} with aliases ${aliases}`);
     for (const alias of aliases) {
       const subgroupHeader = serializeSubgroupHeader({
         type: STREAM.SUBGROUP_FIELD_WITH_EXTENSION,
@@ -406,7 +407,7 @@ export class Publisher {
         extensionHeaders,
         payload: videoChunkBytes,
       };
-      Mogger.debug(`Datagram payload size: ${videoChunkBytes.byteLength} bytes`);
+      this.logger.debug(`Datagram payload size: ${videoChunkBytes.byteLength} bytes`);
       this.sendDatagram(datagram);
     }
   }
@@ -425,7 +426,7 @@ export class Publisher {
     } else {
       // if not a key frame, find the largest group
       if (!group) {
-        Mogger.error(`groupId ${targetTrack.largestGroupId} not found`);
+        this.logger.error(`groupId ${targetTrack.largestGroupId} not found`);
         return;
       }
       // If this frame is the first object of the subgroup, create a unidirectional stream with SUBGROUP_HEADER
@@ -514,33 +515,33 @@ export class Publisher {
     switch (message.data.type) {
     case 'datagramMaxSize':
       this.datagramMaxSize = message.data.data as number;
-      Mogger.info(`Datagram max size set to ${this.datagramMaxSize}`);
+      this.logger.info(`Datagram max size set to ${this.datagramMaxSize}`);
       break;
     case `ctrl-${CONTROL_MESSAGE.SERVER_SETUP}`:
       msg = message.data.data as ServerSetup;
       if (!this.supportedVersions.includes(msg.selectedVersion)) {
-        Mogger.error('Server does not support any of the versions we support');
+        this.logger.error('Server does not support any of the versions we support');
         this.communicator.postMessage({ type: 'closeSession', data: null });
         break;
       }
-      Mogger.info(`Setup successful with version ${msg.selectedVersion}`);
+      this.logger.info(`Setup successful with version ${msg.selectedVersion}`);
       this.selectedVersion = msg.selectedVersion;
       break;
     case `ctrl-${CONTROL_MESSAGE.ANNOUNCE_OK}`:
       msg = message.data.data as AnnounceOk;
       const namespace = this.requestIdToNamespace.get(msg.requestId);
       this.requestIdToNamespace.delete(msg.requestId);
-      Mogger.info(`Announce with namespace ${namespace} successful`);
+      this.logger.info(`Announce with namespace ${namespace} successful`);
       break;
     case `ctrl-${CONTROL_MESSAGE.ANNOUNCE_ERROR}`:
       msg = message.data.data as any;
       const errorNamespace = this.requestIdToNamespace.get(msg.requestId);
       this.requestIdToNamespace.delete(msg.requestId);
-      Mogger.error(`Announce error for namespace ${errorNamespace}. reason: ${msg.reasonPhrase}`);
+      this.logger.error(`Announce error for namespace ${errorNamespace}. reason: ${msg.reasonPhrase}`);
       break;
     case `ctrl-${CONTROL_MESSAGE.SUBSCRIBE}`:
       msg = message.data.data as Subscribe;
-      Mogger.info(`Subscribe request for track ${msg.trackName} with requestId ${msg.requestId} and alias ${msg.trackAlias}`);
+      this.logger.info(`Subscribe request for track ${msg.trackName} with requestId ${msg.requestId} and alias ${msg.trackAlias}`);
       const targetTrack = this.trackManager.getTrack({ name: msg.trackName });
       if (!targetTrack) {
         const sub_err = serializeSubscribeError({
@@ -566,15 +567,15 @@ export class Publisher {
         trackAlias: msg.trackAlias,
         filterType: msg.filterType,
       });
-      Mogger.info(`Initialized subscription for track ${msg.trackName} with requestId ${msg.requestId} and alias ${msg.trackAlias}`);
+      this.logger.info(`Initialized subscription for track ${msg.trackName} with requestId ${msg.requestId} and alias ${msg.trackAlias}`);
       break;
     case `ctrl-${CONTROL_MESSAGE.UNSUBSCRIBE}`:
       msg = message.data.data as Unsubscribe;
       this.removeSubscriber(msg.requestId);
-      Mogger.debug(`Unsubscribe with requestId ${msg.requestId} successful`);
+      this.logger.debug(`Unsubscribe with requestId ${msg.requestId} successful`);
       break;
     case 'error':
-      Mogger.error(`Publisher communicator: ${message.data.data}`);
+      this.logger.error(`Publisher communicator: ${message.data.data}`);
       break;
     case 'sessionClosed':
       this.communicator.terminate();
@@ -590,7 +591,7 @@ export class Publisher {
       this.audioEncoders = {};
       break;
     default:
-      Mogger.error(`Unexpected message type from communicator ${message.data.type}`);
+      this.logger.error(`Unexpected message type from communicator ${message.data.type}`);
       break;
     }
   }
@@ -601,7 +602,7 @@ export class Publisher {
       const videoChunkMsg = data.data as MoqtailVideoChunkMessage;
       const targetTrack = this.trackManager.getTrack({ name: videoChunkMsg.trackName });
       if (!targetTrack) {
-        Mogger.error(`Track ${videoChunkMsg.trackName} not found. Cannot send video chunk.`);
+        this.logger.error(`Track ${videoChunkMsg.trackName} not found. Cannot send video chunk.`);
         return;
       }
 
@@ -615,7 +616,7 @@ export class Publisher {
       }
       break;
     case 'error':
-      Mogger.error(`Error from video encoder: ${message.data.data}`);
+      this.logger.error(`Error from video encoder: ${message.data.data}`);
       break;
     }
   }
@@ -627,7 +628,7 @@ export class Publisher {
       const audioChunkMsg = message.data.data as MoqtailAudioChunkMessage;
       const audioTrack = this.trackManager.getTrack({ name: audioChunkMsg.trackName });
       if (!audioTrack) {
-        Mogger.error(`Track ${audioChunkMsg.trackName} not found. Cannot send audio chunk.`);
+        this.logger.error(`Track ${audioChunkMsg.trackName} not found. Cannot send audio chunk.`);
         return;
       }
       if (audioChunkMsg.chunk.type === 'key') {
@@ -652,7 +653,7 @@ export class Publisher {
       audioTrack.largestObjectId++;
       break;
     case 'error':
-      Mogger.error(`Error from audio encoder: ${message.data.data}`);
+      this.logger.error(`Error from audio encoder: ${message.data.data}`);
       break;
     }
   }

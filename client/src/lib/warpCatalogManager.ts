@@ -17,8 +17,10 @@ import {
   createInitialCatalog,
   createTerminatingCatalog
 } from 'moqtail';
-import { Mogger } from './utils/mogger';
+import { Logger } from 'tslog';
 import type { TrackManager } from './trackManager';
+
+const logger = new Logger({ name: 'WarpCatalogManager' });
 
 export class WarpCatalogManager {
   private currentCatalog: WarpCatalog | null = null;
@@ -81,7 +83,7 @@ export class WarpCatalogManager {
       if (validateWarpCatalog(catalog)) {
         this.currentCatalog = catalog;
         this.notifyCatalogUpdate();
-        Mogger.info('WARP catalog updated');
+        logger.info('WARP catalog updated');
         return catalog;
       }
     } catch (e) {
@@ -94,7 +96,7 @@ export class WarpCatalogManager {
           return this.currentCatalog;
         }
       } catch (patchError) {
-        Mogger.error('Failed to parse WARP catalog or patch data');
+        logger.error('Failed to parse WARP catalog or patch data');
       }
     }
     return null;
@@ -102,7 +104,7 @@ export class WarpCatalogManager {
   // Apply JSON patch to current catalog
   private applyPatch(patch: WarpCatalogPatch[]): void {
     if (!this.currentCatalog) {
-      Mogger.error('Cannot apply patch: no current catalog');
+      logger.error('Cannot apply patch: no current catalog');
       return;
     }
 
@@ -132,7 +134,7 @@ export class WarpCatalogManager {
           // Add more patch operations as needed
         }
       } catch (error) {
-        Mogger.error(`Failed to apply patch operation: ${error}`);
+        logger.error(`Failed to apply patch operation: ${error}`);
       }
     }
 

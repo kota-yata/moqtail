@@ -1,7 +1,7 @@
 <script lang="ts">
   import { AUDIO_ENCODER_DEFAULT_CONFIG, VIDEO_ENCODER_DEFAULT_CONFIG, VIDEO_ENCODER_MOQMI_CONFIG, VIDEO_RESOLUTION_OPTIONS } from '$lib/config';
   import { Publisher } from '$lib/publisher';
-  import { Mogger } from '$lib/utils/mogger';
+  import { Logger } from 'tslog' ;
   import { GROUP_ORDER } from 'moqtail';
   import { onMount } from 'svelte';
 
@@ -10,6 +10,8 @@
   let setupSent = false;
   let publisher: Publisher;
   let stream: MediaStream;
+
+  const logger = new Logger({ name: 'MoQTPublisher' });
 
   const videoEncoders = {
     h264: VIDEO_ENCODER_MOQMI_CONFIG,
@@ -147,9 +149,9 @@
     // Initialize and publish WARP catalog
     publisher.initializeWarpCatalog();
     
-    Mogger.info(`Streaming ${vt.label}`);
+    logger.info(`Streaming ${vt.label}`);
     publisher.startStream({ track: videoTrack, mediaTrack: vt });
-    Mogger.info(`Streaming ${at.label}`);
+    logger.info(`Streaming ${at.label}`);
     publisher.startStream({ track: audioTrack, mediaTrack: at });
   };
   const stopStreaming = () => {
