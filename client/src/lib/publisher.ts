@@ -17,21 +17,22 @@ import {
   AUTH_TOKEN_ALIAS_TYPE
 } from 'moqtail';
 import type { ServerSetup, AnnounceOk, Subscribe, Unsubscribe, ExtensionHeader, Datagram } from 'moqtail';
-// @ts-ignore
-import CommunicatorWorker from './threads/communicator.worker?worker';
-// @ts-ignore
-import VideoEncoderWorker from './threads/video/encoder.worker?worker';
-// @ts-ignore
-import AudioEncoderWorker from './threads/audio/encoder.worker?worker';
+import TypedCommunicatorWorker from './threads/communicator.worker.typed';
+import TypedVideoEncoderWorker from './threads/video/encoder.worker.typed';
+import TypedAudioEncoderWorker from './threads/audio/encoder.worker.typed';
 import { TrackManager } from './trackManager';
 import { WarpCatalogManager } from './warpCatalogManager';
 import { Logger } from 'tslog';
 
+import type { CommunicatorMessageFromWorker } from '$lib/types/communicator-worker';
+import type { VideoEncoderMessageFromWorker } from '$lib/types/video-encoder-worker';
+import type { AudioEncoderMessageFromWorker } from '$lib/types/audio-encoder-worker';
+
 export class Publisher {
   private logger = new Logger({ name: 'Publisher' });
-  private communicator: Worker;
-  private videoEncoders: { [key: string]: Worker } = {};
-  private audioEncoders: { [key: string]: Worker } = {};
+  private communicator: InstanceType<typeof TypedCommunicatorWorker>;
+  private videoEncoders: { [key: string]: InstanceType<typeof TypedVideoEncoderWorker> } = {};
+  private audioEncoders: { [key: string]: InstanceType<typeof TypedAudioEncoderWorker> } = {};
   private trackManager: TrackManager = new TrackManager();
   private warpCatalogManager: WarpCatalogManager = new WarpCatalogManager();
   private supportedVersions = [MOQT_DRAFT11_VERSION];
@@ -42,22 +43,22 @@ export class Publisher {
   private namespace: string[] = [];
   private requestIdToNamespace: Map<number, string[]> = new Map();
   constructor(props: PublisherInitProps) {
-    this.communicator = new CommunicatorWorker();
+    this.communicator = new TypedCommunicatorWorker();
     this.communicator.onmessage = this.communicatorMessageHandler.bind(this);
     this.communicator.postMessage({ type: 'startConnection', data: props.serverUrl });
 
     // Set trackManager reference in warpCatalogManager
     this.warpCatalogManager.setTrackManager(this.trackManager);
   }
-  registerTrack(track: Track): VideoEncoderWorker | AudioEncoderWorker {
+  registerTrack(track: Track): InstanceType<typeof TypedVideoEncoderWorker> | InstanceType<typeof TypedAudioEncoderWorker> {
     this.trackManager.upsertTrack(track);
     if (track.type === 'video') {
-      this.videoEncoders[track.name] = new VideoEncoderWorker();
+      this.videoEncoders[track.name] = new TypedVideoEncoderWorker();
       this.videoEncoders[track.name].onmessage = this.videoEncoderMessageHandler.bind(this);
       this.videoEncoders[track.name].postMessage({ type: 'init', data: track });
       return this.videoEncoders[track.name];
     } else if (track.type === 'audio') {
-      this.audioEncoders[track.name] = new AudioEncoderWorker();
+      this.audioEncoders[track.name] = new TypedAudioEncoderWorker();
       this.audioEncoders[track.name].onmessage = this.audioEncoderMessageHandler.bind(this);
       this.audioEncoders[track.name].postMessage({ type: 'init', data: track });
       return this.audioEncoders[track.name];
@@ -92,7 +93,7 @@ export class Publisher {
       this.logger.error(`Track ${trackName} not found`);
       return;
     }
-    let encoder: Worker;
+    let encoder: InstanceType<typeof TypedVideoEncoderWorker> | InstanceType<typeof TypedAudioEncoderWorker>;
     if (track.type === 'video') {
       encoder = this.videoEncoders[track.name];
       delete this.videoEncoders[track.name];
@@ -510,15 +511,14 @@ export class Publisher {
     sideEffectByType[track.type]?.();
   }
   // ------- Message Handlers for workers -------
-  private communicatorMessageHandler(message: MessageEvent) {
-    let msg;
+  private communicatorMessageHandler(message: MessageEvent<CommunicatorMessageFromWorker>) {
     switch (message.data.type) {
     case 'datagramMaxSize':
       this.datagramMaxSize = message.data.data as number;
       this.logger.info(`Datagram max size set to ${this.datagramMaxSize}`);
       break;
-    case `ctrl-${CONTROL_MESSAGE.SERVER_SETUP}`:
-      msg = message.data.data as ServerSetup;
+    case 'ctrl-server-setup': {
+      const msg = message.data.data as ServerSetup;
       if (!this.supportedVersions.includes(msg.selectedVersion)) {
         this.logger.error('Server does not support any of the versions we support');
         this.communicator.postMessage({ type: 'closeSession', data: null });
@@ -527,20 +527,23 @@ export class Publisher {
       this.logger.info(`Setup successful with version ${msg.selectedVersion}`);
       this.selectedVersion = msg.selectedVersion;
       break;
-    case `ctrl-${CONTROL_MESSAGE.ANNOUNCE_OK}`:
-      msg = message.data.data as AnnounceOk;
+    }
+    case 'ctrl-announce-ok': {
+      const msg = message.data.data as AnnounceOk;
       const namespace = this.requestIdToNamespace.get(msg.requestId);
       this.requestIdToNamespace.delete(msg.requestId);
       this.logger.info(`Announce with namespace ${namespace} successful`);
       break;
-    case `ctrl-${CONTROL_MESSAGE.ANNOUNCE_ERROR}`:
-      msg = message.data.data as any;
+    }
+    case 'ctrl-announce-error': {
+      const msg = message.data.data as any;
       const errorNamespace = this.requestIdToNamespace.get(msg.requestId);
       this.requestIdToNamespace.delete(msg.requestId);
       this.logger.error(`Announce error for namespace ${errorNamespace}. reason: ${msg.reasonPhrase}`);
       break;
-    case `ctrl-${CONTROL_MESSAGE.SUBSCRIBE}`:
-      msg = message.data.data as Subscribe;
+    }
+    case 'ctrl-subscribe': {
+      const msg = message.data.data as Subscribe;
       this.logger.info(`Subscribe request for track ${msg.trackName} with requestId ${msg.requestId} and alias ${msg.trackAlias}`);
       const targetTrack = this.trackManager.getTrack({ name: msg.trackName });
       if (!targetTrack) {
@@ -569,11 +572,13 @@ export class Publisher {
       });
       this.logger.info(`Initialized subscription for track ${msg.trackName} with requestId ${msg.requestId} and alias ${msg.trackAlias}`);
       break;
-    case `ctrl-${CONTROL_MESSAGE.UNSUBSCRIBE}`:
-      msg = message.data.data as Unsubscribe;
+    }
+    case 'ctrl-unsubscribe': {
+      const msg = message.data.data as Unsubscribe;
       this.removeSubscriber(msg.requestId);
       this.logger.debug(`Unsubscribe with requestId ${msg.requestId} successful`);
       break;
+    }
     case 'error':
       this.logger.error(`Publisher communicator: ${message.data.data}`);
       break;
@@ -595,7 +600,7 @@ export class Publisher {
       break;
     }
   }
-  private videoEncoderMessageHandler(message: MessageEvent) {
+  private videoEncoderMessageHandler(message: MessageEvent<VideoEncoderMessageFromWorker>) {
     const data = message.data as ThreadMessage;
     switch (data.type) {
     case 'videoChunk':
@@ -620,7 +625,7 @@ export class Publisher {
       break;
     }
   }
-  private audioEncoderMessageHandler(message: MessageEvent) {
+  private audioEncoderMessageHandler(message: MessageEvent<AudioEncoderMessageFromWorker>) {
     const data = message.data as ThreadMessage;
     switch (data.type) {
     // handling the latest encoded audio chunk
