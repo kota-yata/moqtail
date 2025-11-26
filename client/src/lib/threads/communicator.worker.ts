@@ -152,37 +152,51 @@ class MoQTCommunicator {
   async startReadLoop() {
     while (this.state & COMMUNICATOR_STATE.RUNNING) {
       const msgType = await readControlMessageType(this.controlReader);
-      let message;
-      let error = '';
       switch (msgType) {
-      case CONTROL_MESSAGE.SERVER_SETUP:
-        message = await deserializeServerSetup(this.controlReader);
+      case CONTROL_MESSAGE.SERVER_SETUP: {
+        const message = await deserializeServerSetup(this.controlReader);
+        postMessage({ type: 'ctrl-server-setup', data: message });
         break;
-      case CONTROL_MESSAGE.ANNOUNCE_OK:
-        message = await deserializeAnnounceOk(this.controlReader);
+      }
+      case CONTROL_MESSAGE.ANNOUNCE_OK: {
+        const message = await deserializeAnnounceOk(this.controlReader);
+        postMessage({ type: 'ctrl-announce-ok', data: message });
         break;
-      case CONTROL_MESSAGE.ANNOUNCE_ERROR:
-        message = await deserializeAnnounceError(this.controlReader);
+      }
+      case CONTROL_MESSAGE.ANNOUNCE_ERROR: {
+        const message = await deserializeAnnounceError(this.controlReader);
+        postMessage({ type: 'ctrl-announce-error', data: message });
         break;
-      case CONTROL_MESSAGE.SUBSCRIBE:
-        message = await deserializeSubscribe(this.controlReader);
+      }
+      case CONTROL_MESSAGE.SUBSCRIBE: {
+        const message = await deserializeSubscribe(this.controlReader);
+        postMessage({ type: 'ctrl-subscribe', data: message });
         break;
-      case CONTROL_MESSAGE.SUBSCRIBE_OK:
-        message = await deserializeSubscribeOk(this.controlReader);
+      }
+      case CONTROL_MESSAGE.SUBSCRIBE_OK: {
+        const message = await deserializeSubscribeOk(this.controlReader);
+        postMessage({ type: 'ctrl-subscribe-ok', data: message });
         break;
-      case CONTROL_MESSAGE.SUBSCRIBE_ERROR:
-        message = await deserializeSubscribeError(this.controlReader);
+      }
+      case CONTROL_MESSAGE.SUBSCRIBE_ERROR: {
+        const message = await deserializeSubscribeError(this.controlReader);
+        postMessage({ type: 'ctrl-subscribe-error', data: message });
         break;
-      case CONTROL_MESSAGE.SUBSCRIBE_DONE:
-        message = await deserializeSubscribeDone(this.controlReader);
+      }
+      case CONTROL_MESSAGE.SUBSCRIBE_DONE: {
+        const message = await deserializeSubscribeDone(this.controlReader);
+        postMessage({ type: 'ctrl-subscribe-done', data: message });
         break;
-      case CONTROL_MESSAGE.UNSUBSCRIBE:
-        message = await deserializeUnsubscribe(this.controlReader);
+      }
+      case CONTROL_MESSAGE.UNSUBSCRIBE: {
+        const message = await deserializeUnsubscribe(this.controlReader);
+        postMessage({ type: 'ctrl-unsubscribe', data: message });
         break;
-      default:
-        error = `Unexpected message type: ${msgType}`;
-      };
-      !error ? postMessage({ type: `ctrl-${msgType}`, data: message }): postMessage({ type: 'error', data: error });
+      }
+      default: {
+        postMessage({ type: 'error', data: `Unexpected message type: ${msgType}` });
+      }
+      }
     }
   }
   async startStreamReadLoop() {
