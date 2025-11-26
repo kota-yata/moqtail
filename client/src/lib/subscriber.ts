@@ -19,7 +19,7 @@ import type { AudioDecoderMessageFromWorker } from '$lib/types/audio-decoder-wor
 export class Subscriber {
   private logger = new Logger({ name: 'Subscriber' });
   private supportedVersions = [MOQT_DRAFT11_VERSION];
-  private selectedVersion = 0;
+  private selectedVersion = 0; // for future inter-version implementation
   private subscription: RegisteredSubscription[] = [];
   private videoWaitingForKeyFrame = true;
   private audioWaitingForKeyFrame = true;
@@ -30,7 +30,6 @@ export class Subscriber {
   private videoTimestampOffset: number | null = null;
   private receivedBytes = 0; // for bitrate calculation
   private maxRequestId = 1000;
-  private bitrateInterval: NodeJS.Timeout;
   private audioNode: AudioWorkletNode;
   private communicator: InstanceType<typeof TypedCommunicatorWorker>;
   private videoGenerator?: MediaStreamTrackGenerator<VideoFrame>;
@@ -40,10 +39,6 @@ export class Subscriber {
     this.communicator = new TypedCommunicatorWorker();
     this.communicator.onmessage = this.communicatorMessageHandler.bind(this);
     this.communicator.postMessage({ type: 'startConnection', data: props.serverUrl });
-    this.bitrateInterval = setInterval(() => {
-      bitrateStore.set(this.receivedBytes * 8);
-      this.receivedBytes = 0;
-    }, 1000);
   }
   setup() {
     this.communicator.postMessage({ type: 'startReadLoop', data: null });
