@@ -1,17 +1,7 @@
 import type { MoqTransport, TransportEvent, TransportMessageFromMainThread, TransportOptions } from './types';
 
-export type { MoqTransport, TransportEvent, TransportOptions } from './types';
-export type {
-  BaseTransportError,
-  TransportError,
-  SessionClosedError,
-  WTConnectionFailedError,
-  UnknownControlMessageError,
-  UnknownThreadMessageError,
-  StreamWriteFailedError,
-  StreamReadFailedError,
-  DatagramSendFailedError,
-} from './error';
+export type * from './types';
+export type * from './error';
 export {
   makeSessionClosedError,
   makeWTConnectionFailedError,
