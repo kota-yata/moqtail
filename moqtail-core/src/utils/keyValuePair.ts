@@ -1,10 +1,15 @@
 import { serializeQuicVarInt, deserializeQuicVarInt, concatUint8Arrays, buffRead } from 'bytes';
 
+/**
+ * Low-level Key-Value-Pair encoding used by several MOQT structures.
+ * Even types store a varint number; odd types store length-prefixed bytes.
+ */
 export interface KeyValuePair {
   type: number;
   value: number | Uint8Array;
 }
 
+/** Serialize a single Key-Value-Pair. */
 export const serializeKeyValuePair = (pair: KeyValuePair): Uint8Array => {
   const typeBytes = serializeQuicVarInt(pair.type);
   
@@ -28,6 +33,7 @@ export const serializeKeyValuePair = (pair: KeyValuePair): Uint8Array => {
   }
 };
 
+/** Deserialize a single Key-Value-Pair from a stream. */
 export const deserializeKeyValuePair = async (reader: ReadableStream): Promise<KeyValuePair> => {
   const type = await deserializeQuicVarInt(reader);
   

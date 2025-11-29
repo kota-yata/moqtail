@@ -1,9 +1,11 @@
 import { serializeQuicVarInt, deserializeQuicVarInt, concatUint8Arrays } from 'bytes';
 
+/** Wrapper for a human-readable error or status reason. */
 export interface ReasonPhrase {
   reasonPhrase: string;
 }
 
+/** Serialize a reason phrase with a varint length prefix (max 1024 bytes). */
 export const serializeReasonPhrase = (reasonPhrase: string): Uint8Array => {
   const encoder = new TextEncoder();
   const phraseBytes = encoder.encode(reasonPhrase);
@@ -16,6 +18,7 @@ export const serializeReasonPhrase = (reasonPhrase: string): Uint8Array => {
   return concatUint8Arrays([lengthBytes, phraseBytes]);
 };
 
+/** Deserialize a reason phrase from a stream (enforced max 1024 bytes). */
 export const deserializeReasonPhrase = async (reader: ReadableStream): Promise<string> => {
   const length = await deserializeQuicVarInt(reader);
   

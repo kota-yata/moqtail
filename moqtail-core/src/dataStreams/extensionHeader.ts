@@ -1,11 +1,16 @@
 import { concatUint8Arrays, serializeQuicVarInt, getQuicVarIntLength } from "bytes";
 import { KeyValuePair, serializeKeyValuePair, deserializeKeyValuePair } from "../utils/keyValuePair";
 
+/**
+ * Stream extension header. Even `type` values hold a varint `value`.
+ * Odd `type` values hold a byte array value.
+ */
 export interface ExtensionHeader {
   type: number;
   value: number | Uint8Array;
 }
 
+/** Serialize a single `ExtensionHeader`. */
 export const serializeExtensionHeader = (props: ExtensionHeader) => {
   if (!props) return new Uint8Array(0);
   if (props.type === 0) throw new Error('Extension header type 0 is not allowed');
@@ -18,6 +23,9 @@ export const serializeExtensionHeader = (props: ExtensionHeader) => {
   return serializeKeyValuePair(keyValuePair);
 }
 
+/**
+ * Deserialize a single `ExtensionHeader` and report its byte length.
+ */
 export const deserializeExtensionHeader = async (reader: ReadableStream): Promise<{ value: ExtensionHeader, byteLength: number }> => {
   const keyValuePair = await deserializeKeyValuePair(reader);
   
@@ -41,6 +49,7 @@ export const deserializeExtensionHeader = async (reader: ReadableStream): Promis
   };
 }
 
+/** Serialize a list of `ExtensionHeader`s with a total length prefix. */
 export const serializeExtensionHeaders = (headers: ExtensionHeader[]): Uint8Array => {
   let totalLength = 0;
   const serializedHeaders = headers.map(header => {

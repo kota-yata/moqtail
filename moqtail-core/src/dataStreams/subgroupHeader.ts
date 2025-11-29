@@ -1,6 +1,7 @@
 import { concatUint8Arrays, getUint8, serializeQuicVarInt, setUint8, deserializeQuicVarInt } from "bytes";
 import { STREAM } from "../constants";
 
+/** Serialize a subgroup header to bytes. */
 export const serializeSubgroupHeader = (props: SubgroupHeader) => {
   const streamTypeBytes = serializeQuicVarInt(props.type);
   const trackAliasBytes = serializeQuicVarInt(props.trackAlias);
@@ -14,6 +15,7 @@ export const serializeSubgroupHeader = (props: SubgroupHeader) => {
   return concatUint8Arrays([streamTypeBytes, trackAliasBytes, groupIdBytes, subgroupIdBytes, publisherPriorityBytes]);
 }
 
+/** Deserialize a subgroup header from a stream, given its `STREAM` type. */
 export const deserializeSubgroupHeader = async (type: STREAM, controlReader: ReadableStream): Promise<SubgroupHeader> => {
   const ret: SubgroupHeader = {} as SubgroupHeader;
   ret.type = type;
@@ -26,6 +28,7 @@ export const deserializeSubgroupHeader = async (type: STREAM, controlReader: Rea
   return ret;
 }
 
+/** Fields describing a subgroup stream header. */
 export interface SubgroupHeader {
   type: STREAM,
   trackAlias: number,

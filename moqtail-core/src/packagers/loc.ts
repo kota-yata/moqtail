@@ -2,6 +2,7 @@
 import type { ExtensionHeader } from "../dataStreams/extensionHeader";
 import { buffRead, buffReadFromArray, concatUint8Arrays, serializeQuicVarInt, stringToVarBytes, varBytesToString, deserializeQuicVarInt, varBytesToStringFromArray, deserializeQuicVarIntFromArray } from "bytes"
 
+/** Serialize an EncodedVideoChunk or EncodedAudioChunk to LOC bytes. */
 export const serializeEncodedChunk = (obj: EncodedVideoChunk | EncodedAudioChunk): Uint8Array => {
   const typeBytes = stringToVarBytes(obj.type);
   const timestampBytes = serializeQuicVarInt(obj.timestamp);
@@ -12,6 +13,7 @@ export const serializeEncodedChunk = (obj: EncodedVideoChunk | EncodedAudioChunk
   return concatUint8Arrays([typeBytes, timestampBytes, durationBytes, byteLengthBytes, payload]);
 }
 
+/** Deserialize an encoded chunk from a `ReadableStream` of LOC bytes. */
 export const deserializeEncodedChunk = async (reader: ReadableStream): Promise<EncodedVideoChunkInit | EncodedAudioChunkInit> => {
   const type = await varBytesToString(reader) as 'delta' | 'key';
   const timestamp = await deserializeQuicVarInt(reader);
@@ -50,6 +52,7 @@ export const LOC_EXTENSION_HEADER_TYPE = {
   DATAGRAM_FRAGMENT_INFO: 31
 } as const;
 
+/** Convert a `VideoDecoderConfig` into a LOC extension header. */
 export const videoDecoderConfigToExtensionHeader = (config: VideoDecoderConfig): ExtensionHeader => {
   const codecBytes = stringToVarBytes(config.codec);
   const widthBytes = serializeQuicVarInt(config.codedWidth ?? 0);
@@ -123,6 +126,7 @@ export const deserializeVideoDecoderConfig = (buff: Uint8Array): VideoDecoderCon
   return ret;
 }
 
+/** Convert an `AudioDecoderConfig` into a LOC extension header. */
 export const audioDecoderConfigToExtensionHeader = (config: AudioDecoderConfig): ExtensionHeader => {
   const codecBytes = stringToVarBytes(config.codec);
   const sampleRateBytes = serializeQuicVarInt(config.sampleRate);
@@ -131,6 +135,7 @@ export const audioDecoderConfigToExtensionHeader = (config: AudioDecoderConfig):
   return { type: LOC_EXTENSION_HEADER_TYPE.AUDIO_CONFIG, value: data };
 }
 
+/** Deserialize an `AudioDecoderConfig` from a stream of LOC bytes. */
 export const deserializeAudioDecoderConfig = async (readableStream: ReadableStream): Promise<AudioDecoderConfig> => {
   const ret: AudioDecoderConfig = {} as AudioDecoderConfig;
   ret.codec = await varBytesToString(readableStream);
@@ -139,15 +144,18 @@ export const deserializeAudioDecoderConfig = async (readableStream: ReadableStre
   return ret;
 }
 
+/** Create a LOC extension header containing a capture timestamp. */
 export const captureTimestampToExtensionHeader = (timestamp: number): ExtensionHeader => {
   return { type: LOC_EXTENSION_HEADER_TYPE.CAPTURE_TIMESTAMP, value: timestamp };
 }
 
+/** Read a capture timestamp encoded as a varint from bytes. */
 export const deserializeCaptureTimestamp = (buff: Uint8Array): number => {
   const timestamp = deserializeQuicVarIntFromArray(buff, 0);
   return timestamp.value;
 }
 
+/** Create a LOC header describing a datagram fragment index and count. */
 export const datagramFragmentInfoToExtensionHeader = (
   fragmentIndex: number,
   totalFragments: number

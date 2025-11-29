@@ -4,10 +4,12 @@
 import { varBytesToString } from "bytes";
 
 // WARP version 1 as specified in the draft
+/** Current WARP catalog version supported. */
 export const WARP_VERSION = 1;
 export const WARP_CATALOG_TRACK_NAME = "catalog";
 
 // WARP Catalog interfaces
+/** Catalog describing available tracks and session capabilities. */
 export interface WarpCatalog {
   version: number;
   supportsDeltaUpdates?: boolean;
@@ -45,6 +47,7 @@ export interface WarpTrack {
 }
 
 // WARP Catalog Patch (JSON Patch format)
+/** A JSON Patch operation for catalog updates. */
 export interface WarpCatalogPatch {
   op: 'add' | 'remove' | 'replace' | 'move' | 'copy' | 'test';
   path: string;
@@ -70,33 +73,39 @@ export interface TimelineTrack {
 }
 
 // WARP Catalog serialization
+/** Serialize a `WarpCatalog` as UTF-8 JSON bytes. */
 export const serializeWarpCatalog = (catalog: WarpCatalog): Uint8Array => {
   const jsonString = JSON.stringify(catalog);
   return new TextEncoder().encode(jsonString);
 };
 
+/** Deserialize a `WarpCatalog` from a stream of JSON bytes. */
 export const deserializeWarpCatalog = async (reader: ReadableStream): Promise<WarpCatalog> => {
   const jsonString = await varBytesToString(reader);
   return JSON.parse(jsonString) as WarpCatalog;
 };
 
+/** Deserialize a `WarpCatalog` from a byte array. */
 export const deserializeWarpCatalogFromArray = (data: Uint8Array): WarpCatalog => {
   const jsonString = new TextDecoder().decode(data);
   return JSON.parse(jsonString) as WarpCatalog;
 };
 
 // WARP Catalog Patch serialization
+/** Serialize catalog patch operations as UTF-8 JSON bytes. */
 export const serializeWarpCatalogPatch = (patch: WarpCatalogPatch[]): Uint8Array => {
   const jsonString = JSON.stringify(patch);
   return new TextEncoder().encode(jsonString);
 };
 
+/** Deserialize catalog patch operations from a stream. */
 export const deserializeWarpCatalogPatch = async (reader: ReadableStream): Promise<WarpCatalogPatch[]> => {
   const jsonString = await varBytesToString(reader);
   return JSON.parse(jsonString) as WarpCatalogPatch[];
 };
 
 // Timeline track serialization (CSV format)
+/** Serialize timeline entries to CSV (CRLF) as UTF-8 bytes. */
 export const serializeTimelineTrack = (timeline: TimelineEntry[]): Uint8Array => {
   const header = "MEDIA_PTS,GROUP_ID,OBJECT_ID,WALLCLOCK,METADATA\r\n";
   const rows = timeline.map(entry => {
@@ -110,6 +119,7 @@ export const serializeTimelineTrack = (timeline: TimelineEntry[]): Uint8Array =>
   return new TextEncoder().encode(csvContent);
 };
 
+/** Parse a CSV timeline into `TimelineEntry` objects. */
 export const deserializeTimelineTrack = (data: Uint8Array): TimelineEntry[] => {
   const csvContent = new TextDecoder().decode(data);
   const lines = csvContent.split('\r\n');
@@ -164,6 +174,7 @@ const parseCSVLine = (line: string): string[] => {
 };
 
 // WARP Catalog validation
+/** Validate minimal structural requirements of a `WarpCatalog`. */
 export const validateWarpCatalog = (catalog: WarpCatalog): boolean => {
   // Check required fields
   if (typeof catalog.version !== 'number' || catalog.version !== WARP_VERSION) {
@@ -198,6 +209,7 @@ export const validateWarpCatalog = (catalog: WarpCatalog): boolean => {
 };
 
 // WARP Catalog utility functions
+/** Create a baseline `WarpCatalog` with given tracks. */
 export const createWarpCatalog = (tracks: WarpTrack[], supportsDeltaUpdates = false): WarpCatalog => {
   return {
     version: WARP_VERSION,
@@ -206,6 +218,7 @@ export const createWarpCatalog = (tracks: WarpTrack[], supportsDeltaUpdates = fa
   };
 };
 
+/** Return a new catalog with `track` appended. */
 export const addTrackToCatalog = (catalog: WarpCatalog, track: WarpTrack): WarpCatalog => {
   return {
     ...catalog,
@@ -213,6 +226,7 @@ export const addTrackToCatalog = (catalog: WarpCatalog, track: WarpTrack): WarpC
   };
 };
 
+/** Return a new catalog without the specified track. */
 export const removeTrackFromCatalog = (catalog: WarpCatalog, trackName: string, namespace?: string): WarpCatalog => {
   return {
     ...catalog,
@@ -222,10 +236,12 @@ export const removeTrackFromCatalog = (catalog: WarpCatalog, trackName: string, 
   };
 };
 
+/** Group tracks by `renderGroup` and return collections of aligned tracks. */
 export const getTracksByRenderGroup = (catalog: WarpCatalog, renderGroup: number): WarpTrack[] => {
   return catalog.tracks.filter(track => track.renderGroup === renderGroup);
 };
 
+/** Filter tracks by `altGroup`. */
 export const getTracksByAltGroup = (catalog: WarpCatalog, altGroup: number): WarpTrack[] => {
   return catalog.tracks.filter(track => track.altGroup === altGroup);
 };
@@ -234,10 +250,12 @@ export const getTracksByAltGroup = (catalog: WarpCatalog, altGroup: number): War
 export const WARP_LOC_PACKAGING = "loc";
 
 // WARP utility functions for LOC packaging
+/** Whether a track uses LOC packaging. */
 export const isWarpLocTrack = (track: WarpTrack): boolean => {
   return track.packaging === WARP_LOC_PACKAGING;
 };
 
+/** Group tracks by `renderGroup` to help align time-synchronized media. */
 export const getTimeAlignedTracks = (catalog: WarpCatalog): WarpTrack[][] => {
   const renderGroups = new Map<number, WarpTrack[]>();
   
@@ -254,6 +272,7 @@ export const getTimeAlignedTracks = (catalog: WarpCatalog): WarpTrack[][] => {
 };
 
 // WARP media transmission helpers
+/** For WARP, each encoded chunk is a separate object; return payload as-is. */
 export const createWarpMediaObject = (payload: Uint8Array): Uint8Array => {
   // For WARP, each EncodedAudioChunk or EncodedVideoChunk sample
   // is placed in a separate MOQT Object
@@ -262,10 +281,12 @@ export const createWarpMediaObject = (payload: Uint8Array): Uint8Array => {
 };
 
 // WARP workflow helpers
+/** Create an initial catalog announcing tracks, using delta updates. */
 export const createInitialCatalog = (tracks: WarpTrack[]): WarpCatalog => {
   return createWarpCatalog(tracks, true);
 };
 
+/** Create a terminating catalog signalling end of session. */
 export const createTerminatingCatalog = (): WarpCatalog => {
   return createWarpCatalog([], false);
 };

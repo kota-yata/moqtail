@@ -3,11 +3,18 @@ import { concatUint8Arrays, serializeQuicVarInt, deserializeQuicVarInt } from 'b
 import { serializeKeyValuePair, deserializeKeyValuePair, type KeyValuePair } from './keyValuePair';
 import { serializeAuthToken } from "./authToken";
 
+/**
+ * Generic parameter container used in MOQT control messages.
+ * Even types carry numeric varints; odd types carry byte arrays/strings.
+ */
 export interface Parameter {
   type: number,
   value: any
 }
 
+/**
+ * Serialize a list of parameters to Key-Value-Pair encoded bytes.
+ */
 export const serializeParams = (params: Parameter[]): Uint8Array => {
   const serialized = params.map(param => {
     // Convert Parameter to KeyValuePair format
@@ -38,6 +45,9 @@ export const serializeParams = (params: Parameter[]): Uint8Array => {
   return concatUint8Arrays([numParams, ...serialized]);
 }
 
+/**
+ * Deserialize parameters from a stream and validate by control message type.
+ */
 export const deserializeParams = async (messageType: number, controlReader: ReadableStream): Promise<Parameter[]> => {
   const ret: Parameter[] = [];
   const numParams = await deserializeQuicVarInt(controlReader);

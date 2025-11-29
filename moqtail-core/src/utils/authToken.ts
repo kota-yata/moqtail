@@ -1,5 +1,6 @@
 import { concatUint8Arrays, serializeQuicVarInt, stringToVarBytes } from "bytes";
 
+/** Serialize an authorization token in the MOQT parameter format. */
 export const serializeAuthToken = (token: TOKEN): Uint8Array => {
   const aliasBytes = serializeQuicVarInt(token.aliasType);
   let tokenAliasBytes = new Uint8Array(0);
@@ -25,6 +26,7 @@ export const serializeAuthToken = (token: TOKEN): Uint8Array => {
   return concatUint8Arrays([aliasBytes, tokenAliasBytes, tokenTypeBytes, tokenValueBytes]);
 }
 
+/** Token aliasing mode. */
 export const AUTH_TOKEN_ALIAS_TYPE = {
   DELETE: 0x0,
   REGISTER: 0x1,
@@ -33,6 +35,7 @@ export const AUTH_TOKEN_ALIAS_TYPE = {
 } as const;
 export type AUTH_TOKEN_ALIAS_TYPE = ObjectValueList<typeof AUTH_TOKEN_ALIAS_TYPE>;
 
+/** Authorization token container. */
 export interface TOKEN {
   aliasType: AUTH_TOKEN_ALIAS_TYPE,
   tokenAlias?: number,

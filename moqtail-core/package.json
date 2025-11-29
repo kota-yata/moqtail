@@ -11,6 +11,7 @@
     "test": "jest",
     "build": "tsc",
     "format": "prettier --write .",
+    "docs": "typedoc",
     "web:dev": "vite --config web-tester/vite.config.mjs",
     "web:preview": "vite preview --config web-tester/vite.config.mjs"
   },
@@ -37,6 +38,8 @@
     "jest": "^29.7.0",
     "prettier": "3.3.3",
     "ts-jest": "^29.2.6",
+    "typedoc": "^0.28.15",
+    "typedoc-theme-fresh": "^0.2.1",
     "typescript": "^5.6.2",
     "vite": "^7.2.4"
   }

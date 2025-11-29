@@ -2,10 +2,12 @@ import { concatUint8Arrays, getUint8, serializeQuicVarInt, setUint8, deserialize
 import { deserializeExtensionHeader, serializeExtensionHeaders } from "./extensionHeader";
 import type { ExtensionHeader } from "./extensionHeader";
 
+/** Read the datagram type discriminator. */
 export const deserializeDatagramType = async (readableStream: ReadableStream): Promise<DATAGRAM_TYPE> => {
   return await deserializeQuicVarInt(readableStream);
 }
 
+/** Serialize a datagram header plus payload. */
 export const serializeDatagram = (props: Datagram) => {
   const typeBytes = serializeQuicVarInt(props.type);
   const trackAliasBytes = serializeQuicVarInt(props.trackAlias);
@@ -20,6 +22,7 @@ export const serializeDatagram = (props: Datagram) => {
   return datagram;
 }
 
+/** Deserialize only the datagram header fields from a stream. */
 export const deserializeDatagramHeader = async (type: DATAGRAM_TYPE, readableStream: ReadableStream): Promise<Datagram> => {
   const ret: Datagram = {} as Datagram;
   ret.type = type;
@@ -39,6 +42,7 @@ export const deserializeDatagramHeader = async (type: DATAGRAM_TYPE, readableStr
   return ret;
 }
 
+/** Datagram type values as defined by the MOQT draft. */
 export const DATAGRAM_TYPE = {
   DATAGRAM_WITHOUT_EXTENSION: 0x0,
   DATAGRAM_WITH_EXTENSION: 0x1,
@@ -47,6 +51,7 @@ export const DATAGRAM_TYPE = {
 }
 export type DATAGRAM_TYPE = ObjectValueList<typeof DATAGRAM_TYPE>;
 
+/** Datagram header fields plus payload. */
 export interface Datagram {
   type: DATAGRAM_TYPE,
   trackAlias: number,

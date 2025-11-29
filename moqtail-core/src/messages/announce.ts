@@ -4,6 +4,7 @@ import { serializeParams, deserializeParams, type Parameter } from '../utils/par
 import { deserializeNamespace, validateFullTrackName } from '../utils/namespace';
 import { getUint16, setUint16 } from 'bytes';
 
+/** Serialize an ANNOUNCE control message. */
 export const serializeAnnounce = (props: Announce) => {
   validateFullTrackName(props.trackNamespace, '');
   const messageTypeBytes = serializeQuicVarInt(CONTROL_MESSAGE.ANNOUNCE);
@@ -16,6 +17,7 @@ export const serializeAnnounce = (props: Announce) => {
   return concatUint8Arrays([messageTypeBytes, length, body]);
 }
 
+/** Deserialize an ANNOUNCE control message. */
 export const deserializeAnnounce = async (controlReader: ReadableStream): Promise<Announce> => {
   await getUint16(controlReader); // length
   const requestId = await deserializeQuicVarInt(controlReader);
@@ -24,6 +26,7 @@ export const deserializeAnnounce = async (controlReader: ReadableStream): Promis
   return { requestId, trackNamespace, parameters };
 }
 
+/** ANNOUNCE message fields. */
 export interface Announce {
   requestId: number;
   trackNamespace: string[];

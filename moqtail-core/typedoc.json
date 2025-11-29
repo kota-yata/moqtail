@@ -1,0 +1,15 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/index.ts"],
+  "tsconfig": "tsconfig.json",
+  "out": "docs",
+  "plugin": ["typedoc-theme-fresh"],
+  "theme": "fresh",
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeExternals": false,
+  "includeVersion": true,
+  "sort": ["source-order"],
+  "readme": "README.md"
+}
+

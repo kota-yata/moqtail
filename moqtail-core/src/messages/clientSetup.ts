@@ -3,6 +3,7 @@ import { deserializeParams, serializeParams, type Parameter } from "../utils/par
 import { concatUint8Arrays, serializeQuicVarInt, deserializeQuicVarInt } from "bytes";
 import { getUint16, setUint16 } from "bytes";
 
+/** Serialize a CLIENT_SETUP control message. */
 export const serializeClientSetup = (props: { supportedVersions: number[], params?: Parameter[] }) => {
   const messageType = serializeQuicVarInt(CONTROL_MESSAGE.CLIENT_SETUP);
   const versionLength = serializeQuicVarInt(props.supportedVersions.length);
@@ -13,6 +14,7 @@ export const serializeClientSetup = (props: { supportedVersions: number[], param
   return concatUint8Arrays([messageType, length, versionLength, concatenatedVersions, parametersBytes]);
 }
 
+/** Deserialize a CLIENT_SETUP control message. */
 export const deserializeClientSetup = async (controlReader: ReadableStream) => {
   await getUint16(controlReader); // length
   const versionLength = await deserializeQuicVarInt(controlReader);

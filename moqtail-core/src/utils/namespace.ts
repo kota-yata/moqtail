@@ -1,5 +1,8 @@
 import { varBytesToString, deserializeQuicVarInt, stringToVarBytes } from 'bytes';
 
+/**
+ * Deserialize a hierarchical namespace represented as var-bytes strings.
+ */
 export const deserializeNamespace = async (stream: ReadableStream): Promise<string[]> => {
   const namespaceLength = await deserializeQuicVarInt(stream);
   const namespace: string[] = [];
@@ -9,6 +12,10 @@ export const deserializeNamespace = async (stream: ReadableStream): Promise<stri
   return namespace;
 }
 
+/**
+ * Validate the full length (with var-bytes prefixes) of namespace + track name.
+ * Throws if total exceeds 4096 bytes per the spec guidance.
+ */
 export const validateFullTrackName = (trackNamespace: string[], trackName: string): void => {
   // Calculate total length: sum of namespace fields + track name
   let totalLength = 0;

@@ -1,9 +1,13 @@
 import { deserializeQuicVarInt, readUntilEof } from 'bytes';
 import { STREAM } from 'src/constants';
 
-// readStream reads from a readable stream until EOF and
-// returns the concatenated data as Uint8Array. The optional
-// blockSize parameter controls the intermediate buffer size.
+/**
+ * Read from a `ReadableStream` until EOF and concatenate to a single buffer.
+ *
+ * @param readable Source stream to consume.
+ * @param blockSize Internal buffer size hint (bytes). Default: 1024.
+ * @returns Aggregated data as `Uint8Array`.
+ */
 export const readStream = async (
   readable: ReadableStream,
   blockSize: number = 1024
@@ -11,6 +15,10 @@ export const readStream = async (
   return readUntilEof(readable, blockSize);
 };
 
+/**
+ * Read and decode an incoming stream type discriminator for MOQT.
+ * @returns Parsed `STREAM` enum value.
+ */
 export const deserializeStreamType = async (readable: ReadableStream): Promise<STREAM> => {
-  return await deserializeQuicVarInt(readable) as STREAM;
+  return (await deserializeQuicVarInt(readable)) as STREAM;
 };
