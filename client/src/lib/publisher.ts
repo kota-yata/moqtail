@@ -23,6 +23,7 @@ import TypedAudioEncoderWorker from './threads/audio/encoder.worker.typed';
 import { TrackManager } from './trackManager';
 import { WarpCatalogManager } from './warpCatalogManager';
 import { Logger } from 'tslog';
+import type { TransportError } from '$lib/types/error';
 
 import type { CommunicatorMessageFromWorker } from '$lib/types/communicator-worker';
 import type { VideoEncoderMessageFromWorker } from '$lib/types/video-encoder-worker';
@@ -42,6 +43,7 @@ export class Publisher {
   private datagramMaxSize = 1024;
   private namespace: string[] = [];
   private requestIdToNamespace: Map<number, string[]> = new Map();
+  private cleanedUp: boolean = false;
   constructor(props: PublisherInitProps) {
     this.communicator = new TypedCommunicatorWorker();
     this.communicator.onmessage = this.communicatorMessageHandler.bind(this);
@@ -49,6 +51,23 @@ export class Publisher {
 
     // Set trackManager reference in warpCatalogManager
     this.warpCatalogManager.setTrackManager(this.trackManager);
+  }
+  private cleanupOnError() {
+    if (this.cleanedUp) return;
+    this.cleanedUp = true;
+    try {
+      this.communicator.postMessage({ type: 'closeSession', data: null });
+    } catch {}
+    for (const encoder of Object.values(this.videoEncoders)) {
+      try { encoder.postMessage({ type: 'stop', data: null }); } catch {}
+      try { encoder.terminate(); } catch {}
+    }
+    this.videoEncoders = {};
+    for (const encoder of Object.values(this.audioEncoders)) {
+      try { encoder.postMessage({ type: 'stop', data: null }); } catch {}
+      try { encoder.terminate(); } catch {}
+    }
+    this.audioEncoders = {};
   }
   registerTrack(track: Track): InstanceType<typeof TypedVideoEncoderWorker> | InstanceType<typeof TypedAudioEncoderWorker> {
     this.trackManager.upsertTrack(track);
@@ -580,20 +599,17 @@ export class Publisher {
       break;
     }
     case 'error':
-      this.logger.error(`Publisher communicator: ${message.data.data}`);
+      {
+        const err = message.data.data as TransportError;
+        this.logger.error(`Publisher communicator error [${err.name}]: ${err.message}`);
+        if (err.shouldCleanup) {
+          this.cleanupOnError();
+        }
+      }
       break;
     case 'sessionClosed':
-      this.communicator.terminate();
-      for (const encoder of Object.values(this.videoEncoders)) {
-        encoder.postMessage({ type: 'stop', data: null });
-        encoder.terminate();
-      }
-      this.videoEncoders = {};
-      for (const encoder of Object.values(this.audioEncoders)) {
-        encoder.postMessage({ type: 'stop', data: null });
-        encoder.terminate();
-      }
-      this.audioEncoders = {};
+      this.cleanupOnError();
+      try { this.communicator.terminate(); } catch {}
       break;
     default:
       this.logger.error(`Unexpected message type from communicator ${message.data.type}`);
@@ -621,7 +637,11 @@ export class Publisher {
       }
       break;
     case 'error':
-      this.logger.error(`Error from video encoder: ${message.data.data}`);
+      {
+        const err = message.data.data as TransportError;
+        this.logger.error(`Error from video encoder [${err.name}]: ${err.message}`);
+        if (err.shouldCleanup) this.cleanupOnError();
+      }
       break;
     }
   }
@@ -658,7 +678,11 @@ export class Publisher {
       audioTrack.largestObjectId++;
       break;
     case 'error':
-      this.logger.error(`Error from audio encoder: ${message.data.data}`);
+      {
+        const err = message.data.data as TransportError;
+        this.logger.error(`Error from audio encoder [${err.name}]: ${err.message}`);
+        if (err.shouldCleanup) this.cleanupOnError();
+      }
       break;
     }
   }

@@ -15,6 +15,7 @@ import AudioWorkletURL from './threads/audio/processor.worker?worker&url';
 import type { CommunicatorMessageFromWorker } from '$lib/types/communicator-worker';
 import type { VideoDecoderMessageFromWorker } from '$lib/types/video-decoder-worker';
 import type { AudioDecoderMessageFromWorker } from '$lib/types/audio-decoder-worker';
+import type { TransportError } from '$lib/types/error';
 
 export class Subscriber {
   private logger = new Logger({ name: 'Subscriber' });
@@ -36,6 +37,7 @@ export class Subscriber {
   private videoGenerator?: MediaStreamTrackGenerator<VideoFrame>;
   private videoWriter?: WritableStreamDefaultWriter<VideoFrame>;
   public warpCatalogManager: WarpCatalogManager = new WarpCatalogManager();
+  private cleanedUp: boolean = false;
   constructor(props: SubscriberInitProps) {
     this.communicator = new TypedCommunicatorWorker();
     this.communicator.onmessage = this.communicatorMessageHandler.bind(this);
@@ -44,6 +46,21 @@ export class Subscriber {
       bitrateStore.set(this.receivedBytes * 8);
       this.receivedBytes = 0;
     }, 1000);
+  }
+  private cleanupOnError() {
+    if (this.cleanedUp) return;
+    this.cleanedUp = true;
+    try { clearInterval(this.bitrateInterval); } catch {}
+    try {
+      this.communicator.postMessage({ type: 'closeSession', data: null });
+    } catch {} // communicator might already be terminated or closed
+    try { this.stopAudio(); } catch {}
+    // terminate all decoders
+    for (const sub of this.subscription) {
+      try { sub.decoder.terminate(); } catch {}
+    }
+    this.subscription = [];
+    try { this.communicator.terminate(); } catch {}
   }
   setup() {
     this.communicator.postMessage({ type: 'startReadLoop', data: null });
@@ -296,7 +313,11 @@ export class Subscriber {
       }
       break;
     case 'error':
-      this.logger.error(`Subscriber communicator: ${message.data.data}`);
+      {
+        const err = message.data.data as TransportError;
+        this.logger.error(`Subscriber communicator error [${err.name}]: ${err.message}`);
+        if (err.shouldCleanup) this.cleanupOnError();
+      }
       break;
     }
   }
@@ -318,6 +339,12 @@ export class Subscriber {
         buffer: audioBuffer.buffer,
       }, [audioBuffer.buffer]);
       break;
+    case 'error': {
+      const err = (message.data as any).data as TransportError;
+      this.logger.error(`Decoder error [${err.name}]: ${err.message}`);
+      if (err.shouldCleanup) this.cleanupOnError();
+      break;
+    }
     }
   }
   audioProcessorMessageHandler(message: MessageEvent) {
