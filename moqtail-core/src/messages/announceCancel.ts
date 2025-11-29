@@ -2,13 +2,14 @@ import { serializeQuicVarInt, stringToVarBytes, concatUint8Arrays, deserializeQu
 import { CONTROL_MESSAGE, ANNOUNCE_ERROR_REASON } from '../constants';
 import { deserializeNamespace } from '../utils/namespace';
 import { getUint16, setUint16 } from 'bytes';
+import { serializeReasonPhrase } from '../utils/reasonPhrase';
 
 export const serializeAnnounceCancel = (props: { trackNamespace: string[], errorCode: ANNOUNCE_ERROR_REASON, reasonPhrase: string }) => {
   const messageTypeBytes = serializeQuicVarInt(CONTROL_MESSAGE.ANNOUNCE_CANCEL);
-  const trackNamespaceLength = serializeQuicVarInt(props.trackNamespace.length);
-  const trackNamespaceBytes = props.trackNamespace.map(stringToVarBytes);
+  const trackNamespaceLength = serializeQuicVarInt(props.trackNamespace?.length || 0);
+  const trackNamespaceBytes = (props.trackNamespace || []).map(stringToVarBytes);
   const errorCodeBytes = serializeQuicVarInt(props.errorCode);
-  const reasonPhraseBytes = stringToVarBytes(props.reasonPhrase);
+  const reasonPhraseBytes = serializeReasonPhrase(props.reasonPhrase);
   const body = concatUint8Arrays([trackNamespaceLength, ...trackNamespaceBytes, errorCodeBytes, reasonPhraseBytes]);
   const length = setUint16(body.byteLength);
   return concatUint8Arrays([messageTypeBytes, length, body]);

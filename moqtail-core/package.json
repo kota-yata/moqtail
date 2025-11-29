@@ -10,7 +10,9 @@
   "scripts": {
     "test": "jest",
     "build": "tsc",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "web:dev": "node ../client/node_modules/vite/bin/vite.js --config web-tester/vite.config.mjs",
+    "web:preview": "node ../client/node_modules/vite/bin/vite.js preview --config web-tester/vite.config.mjs"
   },
   "repository": {
     "type": "git",

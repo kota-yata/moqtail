@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>moqtail Control Message Tester (Vite)</title>
+    <style>
+      body { font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 16px; }
+      fieldset { margin-bottom: 16px; }
+      label { display: inline-block; min-width: 160px; }
+      input[type="text"], textarea, select { width: 100%; box-sizing: border-box; font-family: monospace; }
+      textarea { height: 160px; }
+      .row { display: flex; gap: 12px; align-items: center; }
+      .row > * { flex: 1; }
+      .small { font-size: 12px; color: #555; }
+      #logs { white-space: pre-wrap; background: #111; color: #ddd; padding: 8px; border-radius: 6px; height: 260px; overflow: auto; }
+      #status { font-weight: 600; }
+      button { padding: 6px 10px; }
+      .half { width: 49%; display: inline-block; vertical-align: top; }
+    </style>
+  </head>
+  <body>
+    <h1>moqtail Control Message Tester</h1>
+
+    <fieldset>
+      <legend>Connection</legend>
+      <div class="row">
+        <label for="url">WebTransport URL</label>
+        <input id="url" type="text" value="https://tcam.kota-yata.com:4433/moq" placeholder="https://example.com/webtransport" />
+      </div>
+      <div class="row">
+        <button id="connectBtn">Connect</button>
+        <button id="disconnectBtn" disabled>Disconnect</button>
+        <span id="status">Disconnected</span>
+      </div>
+      <div class="small">Note: Requires a browser with WebTransport and a compatible MOQT server.</div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Control Stream</legend>
+      <div class="row">
+        <button id="openControlBtn" disabled>Open Control Stream (bidi)</button>
+        <button id="closeControlBtn" disabled>Close Control Stream</button>
+        <span id="controlStatus">No stream</span>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Send Control Message</legend>
+      <div class="row">
+        <label for="message">Message</label>
+        <select id="message"></select>
+      </div>
+      <div>
+        <div class="half">
+          <div class="small">Edit JSON props to serialize</div>
+          <textarea id="props"></textarea>
+        </div>
+        <div class="half">
+          <div class="small">Last serialized bytes (hex)</div>
+          <textarea id="lastHex" readonly></textarea>
+        </div>
+      </div>
+      <div class="row">
+        <button id="sendBtn" disabled>Serialize & Send</button>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Incoming Messages</legend>
+      <div id="logs"></div>
+    </fieldset>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+  </html>
+
