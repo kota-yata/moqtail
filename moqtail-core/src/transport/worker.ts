@@ -66,7 +66,7 @@ class SharedTransportWorker {
         this.closeSession();
         break;
       default:
-        postMessage({ type: 'error', data: { name: 'UnknownThreadMessage', message: String((m as any).type), shouldCleanup: false } });
+        postMessage({ type: 'error', data: { name: 'UnknownThreadMessageError', message: String((m as any).type), shouldCleanup: false } });
     }
   }
 
@@ -89,13 +89,13 @@ class SharedTransportWorker {
       if (this.options?.autoStartStreamRead !== false) this.startStreamReadLoop();
       if (this.options?.autoStartDatagramRead) this.startDatagramReadLoop();
     } catch (e) {
-      postMessage({ type: 'error', data: { name: 'WTConnectionFailed', message: String(e), shouldCleanup: true } });
+      postMessage({ type: 'error', data: { name: 'WTConnectionFailedError', message: String(e), shouldCleanup: true } });
     }
   }
 
   async sendControlMessage(data: Uint8Array) {
     if (this.state === STATE.STOPPED) {
-      postMessage({ type: 'error', data: { name: 'SessionClosed', message: 'session is closed', shouldCleanup: true } });
+      postMessage({ type: 'error', data: { name: 'SessionClosedError', message: 'session is closed', shouldCleanup: true } });
       return;
     }
     try {
@@ -103,7 +103,7 @@ class SharedTransportWorker {
       await writer.write(data);
       writer.releaseLock();
     } catch (e) {
-      postMessage({ type: 'error', data: { name: 'StreamWriteFailed', message: String(e), shouldCleanup: true } });
+      postMessage({ type: 'error', data: { name: 'StreamWriteFailedError', message: String(e), shouldCleanup: true } });
     }
   }
 
@@ -119,7 +119,7 @@ class SharedTransportWorker {
       const writer = this.streams.get(subgroupId);
       await writer.write(subgroupHeader);
     } catch (e) {
-      postMessage({ type: 'error', data: { name: 'StreamWriteFailed', message: String(e), shouldCleanup: true } });
+      postMessage({ type: 'error', data: { name: 'StreamWriteFailedError', message: String(e), shouldCleanup: true } });
     }
   }
 
@@ -135,7 +135,7 @@ class SharedTransportWorker {
         this.streams.delete(subgroupId);
       }
     } catch (e) {
-      postMessage({ type: 'error', data: { name: 'StreamWriteFailed', message: String(e) } });
+      postMessage({ type: 'error', data: { name: 'StreamWriteFailedError', message: String(e), shouldCleanup: true } });
     }
   }
 
@@ -143,7 +143,7 @@ class SharedTransportWorker {
     try {
       await this.datagramWriter.write(payload);
     } catch (e) {
-      postMessage({ type: 'error', data: { name: 'DatagramSendFailed', message: String(e), shouldCleanup: false } });
+      postMessage({ type: 'error', data: { name: 'DatagramSendFailedError', message: String(e), shouldCleanup: false } });
     }
   }
 
@@ -192,7 +192,7 @@ class SharedTransportWorker {
           break;
         }
         default:
-          postMessage({ type: 'error', data: { name: 'UnknownControlMessage', message: String(msgType), shouldCleanup: false } });
+          postMessage({ type: 'error', data: { name: 'UnknownControlMessageError', message: String(msgType), shouldCleanup: false } });
       }
     }
   }
@@ -233,7 +233,7 @@ class SharedTransportWorker {
       }
       await (reader as any).cancel?.();
     } catch (e) {
-      postMessage({ type: 'error', data: { name: 'StreamReadFailed', message: String(e), shouldCleanup: false } });
+      postMessage({ type: 'error', data: { name: 'StreamReadFailedError', message: String(e), shouldCleanup: false } });
     }
   }
 

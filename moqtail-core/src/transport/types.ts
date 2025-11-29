@@ -9,6 +9,7 @@ import type { deserializeUnsubscribe } from '../messages/unsubscribe';
 import type { SubgroupHeader } from '../dataStreams/subgroupHeader';
 import type { SubgroupObject } from '../dataStreams/subgroupObject';
 import type { Datagram } from '../dataStreams/datagram';
+import type { TransportError } from './error';
 
 /**
  * Role of the transport. Controls which MOQT capabilities are enabled.
@@ -82,24 +83,59 @@ export type TransportControlEvent =
 /**
  * Events emitted by the transport worker to the main thread.
  */
+export interface ErrorEvent {
+  type: 'error';
+  data: TransportError;
+}
+
+export interface SessionConnectedEvent {
+  type: 'session:connected';
+}
+
+export interface SessionClosedEvent {
+  type: 'session:closed';
+}
+
+export interface SubgroupHeaderEvent {
+  type: 'subgroup:header';
+  data: SubgroupHeader;
+}
+
+export interface SubgroupObjectEvent {
+  type: 'subgroup:object';
+  data: {
+    header: SubgroupObject;
+    encodedChunkInit: EncodedVideoChunkInit | EncodedAudioChunkInit;
+    trackAlias: number;
+    subgroupId: number;
+    groupId: number;
+  };
+}
+
+export interface SubgroupObjectStatusEvent {
+  type: 'subgroup:object-status';
+  data: { header: SubgroupObject; subgroupId: number };
+}
+
+export interface DatagramMaxSizeEvent {
+  type: 'datagram:max-size';
+  data: number;
+}
+
+export interface DatagramObjectEvent {
+  type: 'datagram:object';
+  data: { header: Datagram; payload: Uint8Array };
+}
+
 export type TransportEvent =
-  | { type: 'error'; data: any }
-  | { type: 'session:connected' }
-  | { type: 'session:closed' }
-  | { type: 'subgroup:header'; data: SubgroupHeader }
-  | {
-      type: 'subgroup:object';
-      data: {
-        header: SubgroupObject;
-        encodedChunkInit: EncodedVideoChunkInit | EncodedAudioChunkInit;
-        trackAlias: number;
-        subgroupId: number;
-        groupId: number;
-      };
-    }
-  | { type: 'subgroup:object-status'; data: { header: SubgroupObject; subgroupId: number } }
-  | { type: 'datagram:max-size'; data: number }
-  | { type: 'datagram:object'; data: { header: Datagram; payload: Uint8Array } }
+  | ErrorEvent
+  | SessionConnectedEvent
+  | SessionClosedEvent
+  | SubgroupHeaderEvent
+  | SubgroupObjectEvent
+  | SubgroupObjectStatusEvent
+  | DatagramMaxSizeEvent
+  | DatagramObjectEvent
   | TransportControlEvent;
 
 /**

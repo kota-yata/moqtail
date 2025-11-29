@@ -1,6 +1,26 @@
 import type { MoqTransport, TransportEvent, TransportMessageFromMainThread, TransportOptions } from './types';
 
 export type { MoqTransport, TransportEvent, TransportOptions } from './types';
+export type {
+  BaseTransportError,
+  TransportError,
+  SessionClosedError,
+  WTConnectionFailedError,
+  UnknownControlMessageError,
+  UnknownThreadMessageError,
+  StreamWriteFailedError,
+  StreamReadFailedError,
+  DatagramSendFailedError,
+} from './error';
+export {
+  makeSessionClosedError,
+  makeWTConnectionFailedError,
+  makeUnknownControlMessageError,
+  makeUnknownThreadMessageError,
+  makeStreamWriteFailedError,
+  makeStreamReadFailedError,
+  makeDatagramSendFailedError,
+} from './error';
 export { createTypedWorker } from '../utils/typedWorker';
 export { getTransportWorkerURL } from './worker-url';
 
