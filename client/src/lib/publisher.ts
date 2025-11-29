@@ -21,13 +21,13 @@ import {
   type TransportEvent,
 } from 'moqtail';
 import type { ServerSetup, AnnounceOk, Subscribe, Unsubscribe, ExtensionHeader, Datagram } from 'moqtail';
-// Transport provided by moqtail
 import TypedVideoEncoderWorker from './threads/video/encoder.worker.typed';
 import TypedAudioEncoderWorker from './threads/audio/encoder.worker.typed';
 import { TrackManager } from './trackManager';
 import { WarpCatalogManager } from './warpCatalogManager';
 import { Logger } from 'tslog';
-import type { TransportError } from '$lib/types/error';
+import type { TransportError } from 'moqtail';
+import type { MediaEncoderError } from '$lib/types/media-error';
 
 import type { VideoEncoderMessageFromWorker } from '$lib/types/video-encoder-worker';
 import type { AudioEncoderMessageFromWorker } from '$lib/types/audio-encoder-worker';
@@ -649,7 +649,7 @@ export class Publisher {
       break;
     case 'error':
       {
-        const err = message.data.data as TransportError;
+        const err = message.data.data as TransportError | MediaEncoderError;
         this.logger.error(`Error from video encoder [${err.name}]: ${err.message}`);
         if (err.shouldCleanup) this.cleanupOnError();
       }
@@ -690,7 +690,7 @@ export class Publisher {
       break;
     case 'error':
       {
-        const err = message.data.data as TransportError;
+        const err = message.data.data as TransportError | MediaEncoderError;
         this.logger.error(`Error from audio encoder [${err.name}]: ${err.message}`);
         if (err.shouldCleanup) this.cleanupOnError();
       }

@@ -17,7 +17,8 @@ import TypedAudioDecoderWorker from './threads/audio/decoder.worker.typed';
 import AudioWorkletURL from './threads/audio/processor.worker?worker&url';
 import type { VideoDecoderMessageFromWorker } from '$lib/types/video-decoder-worker';
 import type { AudioDecoderMessageFromWorker } from '$lib/types/audio-decoder-worker';
-import type { TransportError } from '$lib/types/error';
+import type { TransportError } from 'moqtail';
+import type { MediaDecoderError } from '$lib/types/media-error';
 
 export class Subscriber {
   private logger = new Logger({ name: 'Subscriber' });
@@ -354,7 +355,7 @@ export class Subscriber {
       }, [audioBuffer.buffer]);
       break;
     case 'error': {
-      const err = (message.data as any).data as TransportError;
+      const err = (message.data as any).data as TransportError | MediaDecoderError;
       this.logger.error(`Decoder error [${err.name}]: ${err.message}`);
       if (err.shouldCleanup) this.cleanupOnError();
       break;

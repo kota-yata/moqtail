@@ -1,4 +1,5 @@
-import type { TransportError } from '$lib/types/error';
+import type { TransportError } from 'moqtail';
+import type { MediaDecoderError } from '$lib/types/media-error';
 import type { Subscribe } from 'moqtail';
 
 export type AudioDecoderMessageFromMainThread =
@@ -7,4 +8,4 @@ export type AudioDecoderMessageFromMainThread =
 
 export type AudioDecoderMessageFromWorker =
   | { type: 'audioData'; data: { audioData: AudioData } }
-  | { type: 'error'; data: TransportError };
+  | { type: 'error'; data: TransportError | MediaDecoderError };

@@ -1,4 +1,5 @@
-import type { TransportError } from '$lib/types/error';
+import type { TransportError } from 'moqtail';
+import type { MediaEncoderError } from '$lib/types/media-error';
 export type AudioEncoderMessageFromMainThread =
   | { type: 'init'; data: Track }
   | { type: 'capture'; data: ReadableStream<AudioData> }
@@ -7,4 +8,4 @@ export type AudioEncoderMessageFromMainThread =
 
 export type AudioEncoderMessageFromWorker =
   | { type: 'audioChunk'; data: MoqtailAudioChunkMessage }
-  | { type: 'error'; data: TransportError };
+  | { type: 'error'; data: TransportError | MediaEncoderError };

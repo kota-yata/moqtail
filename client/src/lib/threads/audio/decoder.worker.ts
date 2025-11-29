@@ -1,5 +1,6 @@
 import { AUDIO_DECODER_DEFAULT_CONFIG } from '$lib/config';
-import { makeMediaDecoderError, makeUnknownThreadMessageError } from '$lib/types/error';
+import { makeMediaDecoderError } from '$lib/types/media-error';
+import { makeUnknownThreadMessageError } from 'moqtail';
 import type { Subscribe } from 'moqtail';
 
 class MoQTAudioDecoder {

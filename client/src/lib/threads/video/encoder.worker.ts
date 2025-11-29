@@ -1,4 +1,4 @@
-import { makeMediaEncoderError } from '$lib/types/error';
+import { makeMediaEncoderError } from '$lib/types/media-error';
 
 class MoQTVideoEncoder {
   private reader: ReadableStreamDefaultReader<VideoFrame>;
