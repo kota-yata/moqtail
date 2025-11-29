@@ -32,7 +32,7 @@ import {
 
   serializeTrackStatusRequest, deserializeTrackStatusRequest,
   serializeTrackStatus, deserializeTrackStatus,
-} from 'moqtail';
+} from '../src/index';
 
 import { getUint16, buffRead } from 'bytes';
 
