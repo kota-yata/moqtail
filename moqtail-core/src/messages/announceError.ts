@@ -1,6 +1,5 @@
-import { serializeQuicVarInt, stringToVarBytes, concatUint8Arrays, deserializeQuicVarInt, varBytesToString } from 'bytes';
+import { serializeQuicVarInt, concatUint8Arrays, deserializeQuicVarInt } from 'bytes';
 import { CONTROL_MESSAGE, ANNOUNCE_ERROR_REASON } from '../constants';
-import { deserializeNamespace } from '../utils/namespace';
 import { getUint16, setUint16 } from 'bytes';
 import { serializeReasonPhrase, deserializeReasonPhrase } from '../utils/reasonPhrase';
 

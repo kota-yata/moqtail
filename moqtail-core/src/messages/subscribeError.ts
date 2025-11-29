@@ -1,12 +1,13 @@
 import { serializeQuicVarInt, stringToVarBytes, concatUint8Arrays, deserializeQuicVarInt, varBytesToString } from 'bytes';
 import { CONTROL_MESSAGE, SUBSCRIBE_ERROR_REASON } from '../constants';
 import { getUint16, setUint16 } from 'bytes';
+import { deserializeReasonPhrase, serializeReasonPhrase } from 'src/utils/reasonPhrase';
 
 export const serializeSubscribeError = (props: SubscribeError) => {
   const messageTypeBytes = serializeQuicVarInt(CONTROL_MESSAGE.SUBSCRIBE_ERROR);
   const requestIdBytes = serializeQuicVarInt(props.requestId);
   const errorCodeBytes = serializeQuicVarInt(props.errorCode);
-  const reasonPhraseBytes = stringToVarBytes(props.reasonPhrase);
+  const reasonPhraseBytes = serializeReasonPhrase(props.reasonPhrase);
   const trackAliasBytes = serializeQuicVarInt(props.trackAlias);
   const body = concatUint8Arrays([requestIdBytes, errorCodeBytes, reasonPhraseBytes, trackAliasBytes]);
   const length = setUint16(body.byteLength);
@@ -20,7 +21,7 @@ export const deserializeSubscribeError = async (controlReader: ReadableStream): 
   if (!Object.values(SUBSCRIBE_ERROR_REASON).includes(errorCode)) {
     throw new Error(`Invalid Subscribe Error Code: ${errorCode}`);
   }
-  const reasonPhrase = await varBytesToString(controlReader);
+  const reasonPhrase = await deserializeReasonPhrase(controlReader);
   const trackAlias = await deserializeQuicVarInt(controlReader);
   return { requestId, errorCode, reasonPhrase, trackAlias };
 }
