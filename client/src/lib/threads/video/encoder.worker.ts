@@ -1,3 +1,5 @@
+import { makeMediaEncoderError } from '$lib/types/error';
+
 class MoQTVideoEncoder {
   private reader: ReadableStreamDefaultReader<VideoFrame>;
   private track: Track;
@@ -28,7 +30,10 @@ class MoQTVideoEncoder {
     this.state = 'encoding';
     const encoder = new VideoEncoder({
       output: (chunk: EncodedVideoChunk, metadata: EncodedVideoChunkMetadata) => this.handleChunk(chunk, metadata),
-      error: (error: DOMException) => postMessage({ type: 'error', data: `VideoEncoder error: ${error.message}` }),
+      error: (error: DOMException) => {
+        const err = makeMediaEncoderError(`VideoEncoder error: ${error.message}`, { kind: 'video', shouldCleanup: true });
+        postMessage({ type: 'error', data: err });
+      },
     });
     const encoderConfig: MyEncoderConfig = this.track.encoderConfig as MyEncoderConfig;
     encoder.configure(encoderConfig.encoderConfig as VideoEncoderConfig);

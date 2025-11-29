@@ -1,5 +1,6 @@
 import { Logger } from 'tslog';
 import { CONTROL_MESSAGE, deserializeAnnounceError, deserializeAnnounceOk, deserializeDatagramHeader, deserializeDatagramType, deserializeEncodedChunk, deserializeServerSetup, deserializeSubgroupHeader, deserializeSubgroupObjectHeader, deserializeSubscribe, deserializeSubscribeDone, deserializeSubscribeError, deserializeSubscribeOk, deserializeUnsubscribe, OBJECT_STATUS, readControlMessageType, STREAM, readStream, DATAGRAM_TYPE, deserializeStreamType } from 'moqtail';
+import { makeSessionClosedError, makeStreamReadFailedError, makeStreamWriteFailedError, makeUnknownControlMessageError, makeUnknownThreadMessageError, makeWTConnectionFailedError } from '$lib/types/error';
 
 export const COMMUNICATOR_STATE = {
   STOPPED: 0b0,
@@ -32,25 +33,32 @@ class MoQTCommunicator {
     };
     const handler = handlers[data.type];
     if (!handler) {
-      postMessage({ type: 'error', data: `Unknown message type: ${data.type}` });
+      const err = makeUnknownThreadMessageError('Unknown thread message type', { messageType: data.type, shouldCleanup: false });
+      postMessage({ type: 'error', data: err });
       return;
     }
     handler(data.data);
   }
   async startConnection(url: string) {
-    this.wt = new WebTransport(url, { congestionControl: 'throughput' });
-    await this.wt.ready;
-    this.controlStream = await this.wt.createBidirectionalStream({ sendOrder: 100 });
-    this.controlWriter = this.controlStream.writable;
-    this.controlReader = this.controlStream.readable;
-    this.datagramWriter = this.wt.datagrams.writable.getWriter();
-    this.datagramReader = this.wt.datagrams.readable.getReader();
-    this.state = this.state | COMMUNICATOR_STATE.RUNNING;
-    postMessage({ type: 'datagramMaxSize', data: this.wt.datagrams.maxDatagramSize });
+    try {
+      this.wt = new WebTransport(url, { congestionControl: 'throughput' });
+      await this.wt.ready;
+      this.controlStream = await this.wt.createBidirectionalStream({ sendOrder: 100 });
+      this.controlWriter = this.controlStream.writable;
+      this.controlReader = this.controlStream.readable;
+      this.datagramWriter = this.wt.datagrams.writable.getWriter();
+      this.datagramReader = this.wt.datagrams.readable.getReader();
+      this.state = this.state | COMMUNICATOR_STATE.RUNNING;
+      postMessage({ type: 'datagramMaxSize', data: this.wt.datagrams.maxDatagramSize });
+    } catch (e) {
+      const err = makeWTConnectionFailedError(`WebTransport connection failed: ${e}`, { shouldCleanup: true });
+      postMessage({ type: 'error', data: err });
+    }
   }
   async sendControlMessage(data: Uint8Array) {
     if (this.state === COMMUNICATOR_STATE.STOPPED) {
-      logger.error('Cannot send control messages as the session is already closed');
+      const err = makeSessionClosedError('Cannot send control message: session is closed', { shouldCleanup: true });
+      postMessage({ type: 'error', data: err });
       return;
     }
     try {
@@ -58,13 +66,15 @@ class MoQTCommunicator {
       await writer.write(data);
       writer.releaseLock();
     } catch (err) {
-      postMessage({ type: 'error', data: `Error sending control message: ${err}` });
+      const e = makeStreamWriteFailedError(`Error sending control message: ${err}`, { shouldCleanup: true });
+      postMessage({ type: 'error', data: e });
     }
     logger.debug('Control message sent');
   }
   async createSubgroupStream({ subgroupId, subgroupHeader }: { subgroupId: number, subgroupHeader: Uint8Array }) {
     if (this.state === COMMUNICATOR_STATE.STOPPED) {
-      logger.error('Cannot create subgroup streams as the session is already closed');
+      const err = makeSessionClosedError('Cannot create subgroup stream: session is closed', { shouldCleanup: true });
+      postMessage({ type: 'error', data: err });
       return;
     }
     try {
@@ -73,8 +83,8 @@ class MoQTCommunicator {
       await writer.write(subgroupHeader);
       logger.debug('Stream created');
     } catch (err) {
-      postMessage({ type: 'error', data: `Error creating subgroup stream: ${err}` });
-
+      const e = makeStreamWriteFailedError(`Error creating subgroup stream: ${err}`, { shouldCleanup: true });
+      postMessage({ type: 'error', data: e });
     }
   }
   async sendObject({ subgroupObject, subgroupId, isLast }: { subgroupObject: Uint8Array, subgroupId: number, isLast?: boolean }) {
@@ -94,20 +104,21 @@ class MoQTCommunicator {
         logger.debug(`Stream ${subgroupId} closed`);
       }
     } catch (err) {
-      postMessage({ type: 'error', data: `Error sending subgroup object: ${err}` });
-      this.closeSession();
+      const e = makeStreamWriteFailedError(`Error sending subgroup object: ${err}`, { shouldCleanup: true });
+      postMessage({ type: 'error', data: e });
     }
   }
   async sendDatagram(data: Uint8Array) {
     if (this.state === COMMUNICATOR_STATE.STOPPED) {
-      postMessage({ type: 'error', data: 'Cannot send datagram as the session is already closed' });
+      const err = makeSessionClosedError('Cannot send datagram: session is closed', { shouldCleanup: true });
+      postMessage({ type: 'error', data: err });
       return;
     }
     try {
       await this.datagramWriter.write(data);
     } catch (err) {
-      postMessage({ type: 'error', data: `Error sending datagram: ${err}` });
-      this.closeSession();
+      const e = makeStreamWriteFailedError(`Error sending datagram: ${err}`, { shouldCleanup: true });
+      postMessage({ type: 'error', data: e });
     }
   }
   closeSession() {
@@ -130,7 +141,8 @@ class MoQTCommunicator {
       }
       await reader.cancel();
     } catch (err) {
-      postMessage({ type: 'error', data: `Error reading subgroup object: ${err}` });
+      const e = makeStreamReadFailedError(`Error reading subgroup object: ${err}`, { shouldCleanup: false });
+      postMessage({ type: 'error', data: e });
     }
   }
   async readDatagramObject(reader: ReadableStream) {
@@ -194,7 +206,8 @@ class MoQTCommunicator {
         break;
       }
       default: {
-        postMessage({ type: 'error', data: `Unexpected message type: ${msgType}` });
+        const e = makeUnknownControlMessageError(`Unknown control message type: ${msgType}`, { code: msgType, shouldCleanup: false });
+        postMessage({ type: 'error', data: e });
       }
       }
     }

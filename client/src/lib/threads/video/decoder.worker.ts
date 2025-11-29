@@ -1,4 +1,5 @@
 import { VIDEO_DECODER_DEFAULT_CONFIG } from '$lib/config';
+import { makeMediaDecoderError, makeUnknownThreadMessageError } from '$lib/types/error';
 import type { Subscribe } from 'moqtail';
 
 class MoQTVideoDecoder {
@@ -12,7 +13,8 @@ class MoQTVideoDecoder {
     };
     const handler = handlers[data.type];
     if (!handler) {
-      postMessage({ type: 'error', data: `Unknown message type: ${data.type}` });
+      const err = makeUnknownThreadMessageError('Unknown thread message type', { messageType: data.type, shouldCleanup: false });
+      postMessage({ type: 'error', data: err });
       return;
     }
     handler(data.data);
@@ -21,7 +23,10 @@ class MoQTVideoDecoder {
     this.subscribe = subscribe;
     this.decoder = new VideoDecoder({
       output: (frame: VideoFrame) => postMessage({ type: 'videoFrame', data: { requestId: this.subscribe.requestId, frame } }, [frame]),
-      error: (error: DOMException) => postMessage({ type: 'error', data: `VideoDecoder error: ${error.message}` }),
+      error: (error: DOMException) => {
+        const err = makeMediaDecoderError(`VideoDecoder error: ${error.message}`, { kind: 'video', shouldCleanup: true });
+        postMessage({ type: 'error', data: err });
+      },
     });
     this.decoder.configure(VIDEO_DECODER_DEFAULT_CONFIG);
   }

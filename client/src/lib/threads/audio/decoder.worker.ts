@@ -1,4 +1,5 @@
 import { AUDIO_DECODER_DEFAULT_CONFIG } from '$lib/config';
+import { makeMediaDecoderError, makeUnknownThreadMessageError } from '$lib/types/error';
 import type { Subscribe } from 'moqtail';
 
 class MoQTAudioDecoder {
@@ -12,7 +13,8 @@ class MoQTAudioDecoder {
     };
     const handler = handlers[data.type];
     if (!handler) {
-      postMessage({ type: 'error', data: `Unknown message type: ${data.type}` });
+      const err = makeUnknownThreadMessageError('Unknown thread message type', { messageType: data.type, shouldCleanup: false });
+      postMessage({ type: 'error', data: err });
       return;
     }
     handler(data.data);
@@ -21,7 +23,10 @@ class MoQTAudioDecoder {
     this.subscribe = subscribe;
     this.decoder = new AudioDecoder({
       output: this.handleAudioData.bind(this),
-      error: (error: DOMException) => postMessage({ type: 'error', data: `AudioDecoder error: ${error.message}` }),
+      error: (error: DOMException) => {
+        const err = makeMediaDecoderError(`AudioDecoder error: ${error.message}`, { kind: 'audio', shouldCleanup: true });
+        postMessage({ type: 'error', data: err });
+      },
     });
     this.decoder.configure(AUDIO_DECODER_DEFAULT_CONFIG);
   }

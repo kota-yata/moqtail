@@ -1,3 +1,5 @@
+import { makeMediaEncoderError } from '$lib/types/error';
+
 class MoQTAudioEncoder {
   private reader: ReadableStreamDefaultReader<AudioData>;
   private track: Track;
@@ -28,7 +30,10 @@ class MoQTAudioEncoder {
     this.state = 'encoding';
     const encoder = new AudioEncoder({
       output: (chunk: EncodedAudioChunk, metadata: EncodedAudioChunkMetadata) => this.handleChunk(chunk, metadata),
-      error: (error: DOMException) => postMessage({ type: 'error', data: `AudioEncoder error: ${error.message}` }),
+      error: (error: DOMException) => {
+        const err = makeMediaEncoderError(`AudioEncoder error: ${error.message}`, { kind: 'audio', shouldCleanup: true });
+        postMessage({ type: 'error', data: err });
+      },
     });
     const encoderConfig: MyEncoderConfig = this.track.encoderConfig as MyEncoderConfig;
     encoder.configure(encoderConfig.encoderConfig as AudioEncoderConfig);
