@@ -1,7 +1,7 @@
-import { serializeQuicVarInt, stringToVarBytes, concatUint8Arrays, deserializeQuicVarInt, varBytesToString } from 'bytes';
+import { serializeQuicVarInt, concatUint8Arrays, deserializeQuicVarInt } from 'bytes';
 import { CONTROL_MESSAGE, SUBSCRIBE_ERROR_REASON } from '../constants';
 import { getUint16, setUint16 } from 'bytes';
-import { deserializeReasonPhrase, serializeReasonPhrase } from 'src/utils/reasonPhrase';
+import { deserializeReasonPhrase, serializeReasonPhrase } from '../utils/reasonPhrase';
 
 export const serializeSubscribeError = (props: SubscribeError) => {
   const messageTypeBytes = serializeQuicVarInt(CONTROL_MESSAGE.SUBSCRIBE_ERROR);
