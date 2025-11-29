@@ -14,10 +14,14 @@ import {
   GROUP_ORDER,
   DATAGRAM_TYPE,
   STREAM,
-  AUTH_TOKEN_ALIAS_TYPE
+  AUTH_TOKEN_ALIAS_TYPE,
+  createTransport,
+  getTransportWorkerURL,
+  type MoqTransport,
+  type TransportEvent,
 } from 'moqtail';
 import type { ServerSetup, AnnounceOk, Subscribe, Unsubscribe, ExtensionHeader, Datagram } from 'moqtail';
-import TypedCommunicatorWorker from './threads/communicator.worker.typed';
+// Transport provided by moqtail
 import TypedVideoEncoderWorker from './threads/video/encoder.worker.typed';
 import TypedAudioEncoderWorker from './threads/audio/encoder.worker.typed';
 import { TrackManager } from './trackManager';
@@ -25,13 +29,13 @@ import { WarpCatalogManager } from './warpCatalogManager';
 import { Logger } from 'tslog';
 import type { TransportError } from '$lib/types/error';
 
-import type { CommunicatorMessageFromWorker } from '$lib/types/communicator-worker';
 import type { VideoEncoderMessageFromWorker } from '$lib/types/video-encoder-worker';
 import type { AudioEncoderMessageFromWorker } from '$lib/types/audio-encoder-worker';
 
 export class Publisher {
   private logger = new Logger({ name: 'Publisher' });
-  private communicator: InstanceType<typeof TypedCommunicatorWorker>;
+  private transport: MoqTransport;
+  private unsubEvents: (() => void)[] = [];
   private videoEncoders: { [key: string]: InstanceType<typeof TypedVideoEncoderWorker> } = {};
   private audioEncoders: { [key: string]: InstanceType<typeof TypedAudioEncoderWorker> } = {};
   private trackManager: TrackManager = new TrackManager();
@@ -45,9 +49,20 @@ export class Publisher {
   private requestIdToNamespace: Map<number, string[]> = new Map();
   private cleanedUp: boolean = false;
   constructor(props: PublisherInitProps) {
-    this.communicator = new TypedCommunicatorWorker();
-    this.communicator.onmessage = this.communicatorMessageHandler.bind(this);
-    this.communicator.postMessage({ type: 'startConnection', data: props.serverUrl });
+    const worker = new Worker(getTransportWorkerURL(), { type: 'module' });
+    this.transport = createTransport(worker, { role: 'publisher', enableDatagrams: true });
+    const on = (t: TransportEvent['type']) => this.transport.on(t as any, this.transportEventHandler.bind(this) as any);
+    this.unsubEvents.push(
+      on('datagram:max-size'),
+      on('ctrl:server-setup'),
+      on('ctrl:announce-ok'),
+      on('ctrl:announce-error'),
+      on('ctrl:subscribe'),
+      on('ctrl:unsubscribe'),
+      on('error'),
+      on('session:closed'),
+    );
+    this.transport.connect(props.serverUrl);
 
     // Set trackManager reference in warpCatalogManager
     this.warpCatalogManager.setTrackManager(this.trackManager);
@@ -55,9 +70,7 @@ export class Publisher {
   private cleanupOnError() {
     if (this.cleanedUp) return;
     this.cleanedUp = true;
-    try {
-      this.communicator.postMessage({ type: 'closeSession', data: null });
-    } catch {}
+    try { this.transport.close(); } catch {}
     for (const encoder of Object.values(this.videoEncoders)) {
       try { encoder.postMessage({ type: 'stop', data: null }); } catch {}
       try { encoder.terminate(); } catch {}
@@ -147,14 +160,13 @@ export class Publisher {
     });
   }
   setup() {
-    this.communicator.postMessage({ type: 'startReadLoop', data: null });
     const msg = serializeClientSetup({
       supportedVersions: this.supportedVersions,
       params: [
         { type: PARAMETER.SETUP.MAX_REQUEST_ID.KEY, value: this.maxRequestId }
       ]
     });
-    this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
+    this.transport.sendControlMessage(msg);
   }
   private getNextRequestId(): number {
     this.currentRequestId += 2; // Client uses even Request IDs (0, 2, 4, 6, ...)
@@ -175,11 +187,11 @@ export class Publisher {
         }
       }
     ] });
-    this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
+    this.transport.sendControlMessage(msg);
   }
   unannounce(namespace: string[]) {
     const msg = serializeUnannounce({ trackNamespace: namespace });
-    this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
+    this.transport.sendControlMessage(msg);
   }
   subscribeDone(requestId: number, track: Track) {
     const msg = serializeSubscribeDone({
@@ -188,7 +200,7 @@ export class Publisher {
       reasonPhrase: 'Publisher has stopped sending the track',
       streamCount: track.objectForwardingPrefereces === 'Datagram' ? 0 : track.streamCount
     });
-    this.communicator.postMessage({ type: 'sendControlMessage', data: msg });
+    this.transport.sendControlMessage(msg);
   }
   // WARP Catalog Methods
   initializeWarpCatalog() {
@@ -320,7 +332,7 @@ export class Publisher {
       objectStatus: OBJECT_STATUS.END_OF_GROUP,
       payload: new Uint8Array(0)
     });
-    this.communicator.postMessage({ type: 'sendSubgroupObject', data: { subgroupObject, subgroupId: lastSubgroupId, isLast: true } });
+    this.transport.sendSubgroupObject({ subgroupObject, subgroupId: lastSubgroupId, isLast: true });
   }
   private removeSubscriber(requestId: number) {
     const emptyTracks = this.trackManager.removeSubscriber(requestId);
@@ -353,7 +365,7 @@ export class Publisher {
         groupId: targetTrack.largestGroupId,
         publisherPriority: this.getPublisherPriority(targetTrack.type, subgroupId),
       });
-      this.communicator.postMessage({ type: 'createSubgroupStream', data: { subgroupId, subgroupHeader } });
+      this.transport.createSubgroupStream({ subgroupId, subgroupHeader });
     }
     targetTrack.streamCount++;
   }
@@ -361,7 +373,7 @@ export class Publisher {
     const baseSize = serializeDatagram({ ...datagram, payload: new Uint8Array(0) }).byteLength;
     if (baseSize + datagram.payload.byteLength <= this.datagramMaxSize) {
       const datagramBytes = serializeDatagram(datagram);
-      this.communicator.postMessage({ type: 'sendDatagram', data: datagramBytes });
+      this.transport.sendDatagram(datagramBytes);
       return;
     }
     // If the datagram is too large, we need to fragment it
@@ -379,7 +391,7 @@ export class Publisher {
         extensionHeaders: [...datagram.extensionHeaders, header],
         payload: fragmentPayload,
       });
-      this.communicator.postMessage({ type: 'sendDatagram', data: d });
+      this.transport.sendDatagram(d);
     }
   }
   // Common method to prepare video chunk data
@@ -464,7 +476,7 @@ export class Publisher {
       extensionHeaders,
       payload: videoChunkBytes
     });
-    this.communicator.postMessage({ type: 'sendSubgroupObject', data: { subgroupObject, subgroupId } });
+    this.transport.sendSubgroupObject({ subgroupObject, subgroupId });
 
     // Send END_OF_GROUP if this is the last object
     const isLast = targetTrack.largestObjectId + 1 === targetTrack.encoderConfig.keyFrameDuration;
@@ -489,7 +501,7 @@ export class Publisher {
         extensionHeaders,
         payload: videoChunkBytes
       });
-      this.communicator.postMessage({ type: 'sendSubgroupObject', data: { subgroupObject, subgroupId } });
+      this.transport.sendSubgroupObject({ subgroupObject, subgroupId });
     } else {
       // Delta frames are sent as datagram objects within the current group
       if (targetTrack.largestGroupId === undefined) return; // drop until first key frame
@@ -530,39 +542,39 @@ export class Publisher {
     sideEffectByType[track.type]?.();
   }
   // ------- Message Handlers for workers -------
-  private communicatorMessageHandler(message: MessageEvent<CommunicatorMessageFromWorker>) {
-    switch (message.data.type) {
-    case 'datagramMaxSize':
-      this.datagramMaxSize = message.data.data as number;
+  private transportEventHandler(message: TransportEvent) {
+    switch (message.type) {
+    case 'datagram:max-size':
+      this.datagramMaxSize = message.data as number;
       this.logger.info(`Datagram max size set to ${this.datagramMaxSize}`);
       break;
-    case 'ctrl-server-setup': {
-      const msg = message.data.data as ServerSetup;
+    case 'ctrl:server-setup': {
+      const msg = message.data as ServerSetup;
       if (!this.supportedVersions.includes(msg.selectedVersion)) {
         this.logger.error('Server does not support any of the versions we support');
-        this.communicator.postMessage({ type: 'closeSession', data: null });
+        this.transport.close();
         break;
       }
       this.logger.info(`Setup successful with version ${msg.selectedVersion}`);
       this.selectedVersion = msg.selectedVersion;
       break;
     }
-    case 'ctrl-announce-ok': {
-      const msg = message.data.data as AnnounceOk;
+    case 'ctrl:announce-ok': {
+      const msg = message.data as AnnounceOk;
       const namespace = this.requestIdToNamespace.get(msg.requestId);
       this.requestIdToNamespace.delete(msg.requestId);
       this.logger.info(`Announce with namespace ${namespace} successful`);
       break;
     }
-    case 'ctrl-announce-error': {
-      const msg = message.data.data as any;
+    case 'ctrl:announce-error': {
+      const msg = message.data as any;
       const errorNamespace = this.requestIdToNamespace.get(msg.requestId);
       this.requestIdToNamespace.delete(msg.requestId);
       this.logger.error(`Announce error for namespace ${errorNamespace}. reason: ${msg.reasonPhrase}`);
       break;
     }
-    case 'ctrl-subscribe': {
-      const msg = message.data.data as Subscribe;
+    case 'ctrl:subscribe': {
+      const msg = message.data as Subscribe;
       this.logger.info(`Subscribe request for track ${msg.trackName} with requestId ${msg.requestId} and alias ${msg.trackAlias}`);
       const targetTrack = this.trackManager.getTrack({ name: msg.trackName });
       if (!targetTrack) {
@@ -572,13 +584,13 @@ export class Publisher {
           reasonPhrase: 'Track does not exist',
           trackAlias: msg.trackAlias
         });
-        this.communicator.postMessage({ type: 'sendControlMessage', data: sub_err });
+        this.transport.sendControlMessage(sub_err);
         break;
       }
 
       // Return SUBSCRIBE_OK before starting the stream
       const sub_ok = serializeSubscribeOk({ requestId: msg.requestId, expires: 0, groupOrder: msg.groupOrder || targetTrack.groupOrderPublisherPreference, contentExists: 0 });
-      this.communicator.postMessage({ type: 'sendControlMessage', data: sub_ok });
+      this.transport.sendControlMessage(sub_ok);
 
       if (targetTrack.subscribers.length === 0) this.onSubscribeFirstSubscriberSideEffects(targetTrack);
       if (targetTrack.type === 'catalog') this.publishCatalog(msg.trackAlias);
@@ -592,27 +604,26 @@ export class Publisher {
       this.logger.info(`Initialized subscription for track ${msg.trackName} with requestId ${msg.requestId} and alias ${msg.trackAlias}`);
       break;
     }
-    case 'ctrl-unsubscribe': {
-      const msg = message.data.data as Unsubscribe;
+    case 'ctrl:unsubscribe': {
+      const msg = message.data as Unsubscribe;
       this.removeSubscriber(msg.requestId);
       this.logger.debug(`Unsubscribe with requestId ${msg.requestId} successful`);
       break;
     }
     case 'error':
       {
-        const err = message.data.data as TransportError;
+        const err = message.data as any;
         this.logger.error(`Publisher communicator error [${err.name}]: ${err.message}`);
         if (err.shouldCleanup) {
           this.cleanupOnError();
         }
       }
       break;
-    case 'sessionClosed':
+    case 'session:closed':
       this.cleanupOnError();
-      try { this.communicator.terminate(); } catch {}
       break;
     default:
-      this.logger.error(`Unexpected message type from communicator ${message.data.type}`);
+      this.logger.error(`Unexpected transport event ${message.type}`);
       break;
     }
   }
