@@ -11,6 +11,7 @@ import type {
   deserializeSubscribeDone,
   deserializeUnsubscribe,
 } from 'moqtail';
+import type { TransportError } from '$lib/types/error';
 
 export type CommunicatorMessageFromMainThread =
   | { type: 'startConnection'; data: string }
@@ -67,7 +68,7 @@ export type CommunicatorControlMessage =
   | CtrlUnsubscribe;
 
 export type CommunicatorMessageFromWorker =
-  | { type: 'error'; data: string }
+  | { type: 'error'; data: TransportError }
   | { type: 'sessionClosed' }
   | { type: 'datagramMaxSize'; data: number }
   | { type: 'subgroupObject'; data: { header: SubgroupObject; encodedChunkInit: EncodedVideoChunkInit | EncodedAudioChunkInit; trackAlias: number; subgroupId: number; groupId: number } }

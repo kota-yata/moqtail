@@ -1,3 +1,4 @@
+import type { TransportError } from '$lib/types/error';
 import type { Subscribe } from 'moqtail';
 
 export type VideoDecoderMessageFromMainThread =
@@ -6,5 +7,4 @@ export type VideoDecoderMessageFromMainThread =
 
 export type VideoDecoderMessageFromWorker =
   | { type: 'videoFrame'; data: { requestId: number; frame: VideoFrame } }
-  | { type: 'error'; data: string };
-
+  | { type: 'error'; data: TransportError };

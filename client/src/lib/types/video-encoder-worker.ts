@@ -1,3 +1,4 @@
+import type { TransportError } from '$lib/types/error';
 export type VideoEncoderMessageFromMainThread =
   | { type: 'init'; data: Track }
   | { type: 'capture'; data: ReadableStream<VideoFrame> }
@@ -6,5 +7,4 @@ export type VideoEncoderMessageFromMainThread =
 
 export type VideoEncoderMessageFromWorker =
   | { type: 'videoChunk'; data: MoqtailVideoChunkMessage }
-  | { type: 'error'; data: string };
-
+  | { type: 'error'; data: TransportError };
