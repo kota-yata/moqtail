@@ -7,3 +7,6 @@ Media over QUIC Transport message serializer/deserializer aiming for browser usa
 - serializer/deserializer for all control messages at `src/messages`
 - serializer/deserializer for data streams at `src/dataStreams`
 - serializer/deserializer for packagers at `src/packagers`
+
+## Web Tester
+Test UI is available at `moqtail-core/web-tester/`. Run `make core-web-tester` to start a local web server and open the tester in your browser.

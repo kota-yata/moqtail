@@ -27,7 +27,7 @@ moqtial can receive:
 - [x] ANNOUNCE_OK
 - [x] ANNOUNCE_ERROR
 
-not yet implemented:
+not yet interopped:
 - [ ] GOAWAY
 - [ ] MAX_REQUEST_ID
 - [ ] REQUESTS_BLOCKED
