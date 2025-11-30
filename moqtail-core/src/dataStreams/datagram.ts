@@ -1,6 +1,7 @@
 import { concatUint8Arrays, getUint8, serializeQuicVarInt, setUint8, deserializeQuicVarInt, getQuicVarIntLength } from "bytes";
 import { deserializeExtensionHeader, serializeExtensionHeaders } from "./extensionHeader";
 import type { ExtensionHeader } from "./extensionHeader";
+import { ObjectValueList } from "internal";
 
 /** Read the datagram type discriminator. */
 export const deserializeDatagramType = async (readableStream: ReadableStream): Promise<DATAGRAM_TYPE> => {

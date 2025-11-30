@@ -4,6 +4,7 @@ import { audioDecoderConfigToExtensionHeader, LOC_EXTENSION_HEADER_TYPE, videoDe
 import { H264AVCCExtraDataToExtensionHeader, H264AVCCMetadataToExtensionHeader } from "./h264AVCC";
 import { opusBitstreamToExtensionHeader } from "./opus";
 import { AACLCBitstreamToExtensionHeader } from "./AACLC";
+import { ObjectValueList } from "internal";
 
 export const MI_EXTENSION_HEADER_TYPE = {
   MEDIA_TYPE: 0xA,

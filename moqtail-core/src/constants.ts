@@ -1,3 +1,5 @@
+import { ObjectValueList } from "internal";
+
 export const MOQT_DRAFT11_VERSION = 0xff00000B;
 
 export const PARAMETER = {
