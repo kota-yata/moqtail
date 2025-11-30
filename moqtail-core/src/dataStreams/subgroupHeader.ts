@@ -6,7 +6,7 @@ export const serializeSubgroupHeader = (props: SubgroupHeader) => {
   const streamTypeBytes = serializeQuicVarInt(props.type);
   const trackAliasBytes = serializeQuicVarInt(props.trackAlias);
   const groupIdBytes = serializeQuicVarInt(props.groupId);
-  let subgroupIdBytes = new Uint8Array(0);
+  let subgroupIdBytes: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
   if (props.type === STREAM.SUBGROUP_FIELD || props.type === STREAM.SUBGROUP_FIELD_WITH_EXTENSION) {
     if (props.subgroupId === undefined) throw new Error('subgroupId is required for SUBGROUP_FIELD type');
     subgroupIdBytes = serializeQuicVarInt(props.subgroupId);
