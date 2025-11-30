@@ -1,7 +1,7 @@
 <script lang="ts">
   import { AUDIO_ENCODER_DEFAULT_CONFIG, VIDEO_ENCODER_DEFAULT_CONFIG, VIDEO_ENCODER_MOQMI_CONFIG, VIDEO_RESOLUTION_OPTIONS } from '$lib/config';
   import { Publisher } from '$lib/publisher';
-  import { Logger } from 'tslog' ;
+  import { Logger } from 'tslog';
   import { GROUP_ORDER } from 'moqtail';
   import { onMount } from 'svelte';
 
