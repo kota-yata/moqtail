@@ -136,14 +136,14 @@ export class Subscriber {
       this.transport.close();
       throw new Error(err);
     } else if (!sub.subscribeOk) {
-      const err = `Subgroup Objcet with alias:${trackAlias} received before subscribeOk`;
+      const msg = `Subgroup Objcet with alias:${trackAlias} received before subscribeOk`;
       // Receiving objects before subscribeOk is not an explicit protocol violation,
       // so we log it instead of throwing an error
-      this.logger.error(err);
+      this.logger.warn(msg);
     }
     return sub;
   }
-  private generateReadableStreamFromBuffer(value: Uint8Array): ReadableStream {
+  private generateReadableStreamFromBuffer(value: Uint8Array<ArrayBuffer>): ReadableStream {
     return new ReadableStream({
       type: 'bytes',
       start(controller) {
@@ -316,7 +316,7 @@ export class Subscriber {
         let audioDecoderConfig = null;
         datagramObject.header.extensionHeaders.map(h => {
           if (h.type !== LOC_EXTENSION_HEADER_TYPE.AUDIO_CONFIG) return;
-          const readableStream = this.generateReadableStreamFromBuffer(h.value as Uint8Array);
+          const readableStream = this.generateReadableStreamFromBuffer(h.value as Uint8Array<ArrayBuffer>);
           deserializeAudioDecoderConfig(readableStream).then((config) => {
             audioDecoderConfig = config;
           });
