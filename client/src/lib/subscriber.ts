@@ -155,6 +155,7 @@ export class Subscriber {
       }
       this.selectedVersion = msg.selectedVersion;
       this.logger.info(`Setup successful with version ${msg.selectedVersion}`);
+      // Start reading streams here because objects may arrive before subscribeOk
       this.transport.startStreamReadLoop({ mode: 'encodedChunk' });
       this.transport.startDatagramReadLoop();
       break;
@@ -168,8 +169,6 @@ export class Subscriber {
         break;
       }
       subscription.subscribeOk = true;
-      this.transport.startStreamReadLoop({ mode: 'encodedChunk' });
-      this.transport.startDatagramReadLoop();
       break;
     }
     case 'ctrl:subscribe-error': {
