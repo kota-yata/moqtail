@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "test": "jest",
-    "build": "tsc",
+    "build": "tsc && vite build --config vite.worker.config.mjs",
     "format": "prettier --write .",
     "docs": "typedoc",
     "web:dev": "vite --config web-tester/vite.config.mjs",
