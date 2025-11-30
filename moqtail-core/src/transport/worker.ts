@@ -25,13 +25,13 @@ const STATE = {
 } as const;
 
 class SharedTransportWorker {
-  private wt: any;
-  private controlStream: any;
-  private controlWriter: any;
-  private controlReader: any;
-  private datagramWriter: any;
-  private datagramReader: any;
-  private streams: Map<number, any> = new Map();
+  private wt: WebTransport;
+  private controlStream: WebTransportBidirectionalStream;
+  private controlWriter: WritableStream;
+  private controlReader: ReadableStream;
+  private datagramWriter: WritableStreamDefaultWriter;
+  private datagramReader: ReadableStreamDefaultReader;
+  private streams: Map<number, WritableStreamDefaultWriter> = new Map();
   private state = 0;
   private options: any = {};
 
@@ -70,10 +70,21 @@ class SharedTransportWorker {
     }
   }
 
-  async startConnection(url: string, options?: any) {
+  /**
+   * Start a WebTransport connection to the given URL.
+   * @param url WebTransport server URL
+   * @param options Connection options
+   */
+  async startConnection(
+    url: string,
+    options?: {
+      enableDatagrams?: boolean;
+      autoStartControlRead?: boolean;
+      congestionControl?: WebTransportCongestionControl;
+    }
+  ) {
     try {
-      this.options = options || {};
-      this.wt = new WebTransport(url, { congestionControl: this.options?.congestionControl || 'throughput' });
+      this.wt = new WebTransport(url, { congestionControl: options?.congestionControl || 'throughput' });
       await this.wt.ready;
       this.controlStream = await this.wt.createBidirectionalStream({ sendOrder: 100 });
       this.controlWriter = this.controlStream.writable;
@@ -109,7 +120,8 @@ class SharedTransportWorker {
 
   closeSession() {
     this.state = STATE.STOPPED;
-    if (this.wt) this.wt.close?.();
+    // Ignore errors during close since we're shutting down anyway.
+    try { if (this.wt) this.wt.close(); } catch {}
     postMessage({ type: 'session:closed' });
   }
 
@@ -217,7 +229,7 @@ class SharedTransportWorker {
     }
   }
 
-  async readSubgroupObject(reader: ReadableStream, trackAlias: number, subgroupId: number, groupId: number) {
+  private async readSubgroupObject(reader: ReadableStream, trackAlias: number, subgroupId: number, groupId: number) {
     try {
       let done = false;
       while (!done) {
