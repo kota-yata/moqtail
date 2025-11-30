@@ -26,8 +26,8 @@ export const deserializeSubgroupObjectHeader = async (readableStream: ReadableSt
     ret.extensionHeaders.push(v.value);
     extensionHeadersLength -= v.byteLength;
   }
-  const payloadLength = await deserializeQuicVarInt(readableStream);
-  if (payloadLength === 0) {
+  ret.payloadLength = await deserializeQuicVarInt(readableStream);
+  if (ret.payloadLength === 0) {
     ret.objectStatus = await deserializeQuicVarInt(readableStream) as OBJECT_STATUS;
   }
   return ret;
@@ -37,6 +37,7 @@ export const deserializeSubgroupObjectHeader = async (readableStream: ReadableSt
 export interface SubgroupObject {
   objectId: number,
   extensionHeaders: ExtensionHeader[],
-  objectStatus?: OBJECT_STATUS
+  objectStatus?: OBJECT_STATUS,
+  payloadLength?: number,
   payload: Uint8Array
 }
