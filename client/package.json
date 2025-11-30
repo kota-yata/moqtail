@@ -35,7 +35,7 @@
 	"type": "module",
 	"dependencies": {
 		"bytes": "*",
-		"moqtail": "*",
+		"moqtail": "0.1.4",
 		"tslog": "^4.10.2"
 	},
 	"engines": {
