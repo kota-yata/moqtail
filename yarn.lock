@@ -3168,13 +3168,6 @@ mkdirp@^0.5.1:
   dependencies:
     minimist "^1.2.6"
 
-moqtail@0.1.4:
-  version "0.1.4"
-  resolved "https://registry.yarnpkg.com/moqtail/-/moqtail-0.1.4.tgz#2976f0fb222739a9ea6cb51996eaa83379c58dfb"
-  integrity sha512-WpaGgxuX7wUoThGiOxysoP0i5FE8/Xr8C8Zda1r6KyvOfcFzfmuJevET7vCkdVkkxp7YEhWwetitXgaOgTdoHQ==
-  dependencies:
-    bytes "*"
-
 mri@^1.1.0:
   version "1.2.0"
   resolved "https://registry.npmjs.org/mri/-/mri-1.2.0.tgz"
