@@ -7,7 +7,7 @@ export const serializeSubgroupObject = (props: SubgroupObject) => {
   const objectIdBytes = serializeQuicVarInt(props.objectId);
   const extensionHeaderBytes = serializeExtensionHeaders(props.extensionHeaders); // assuming subgroup header's type is **_WITH_EXTENSION
   const payloadLengthBytes = serializeQuicVarInt(props.payload.byteLength);
-  let objectStatusBytes = new Uint8Array(0);
+  let objectStatusBytes: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
   if (props.payload.byteLength === 0) {
     if (props.objectStatus === undefined) throw new Error('objectStatus is required when payload is empty');
     objectStatusBytes = serializeQuicVarInt(props.objectStatus);
