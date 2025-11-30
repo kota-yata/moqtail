@@ -43,4 +43,5 @@ export * from './utils/keyValuePair';
 export * from './utils/authToken';
 export * from './utils/reasonPhrase';
 export * from './utils/namespace';
+export * from './utils/typedWorker';
 export * from './transport';
