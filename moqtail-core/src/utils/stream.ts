@@ -1,4 +1,4 @@
-import { deserializeQuicVarInt, readUntilEof } from 'bytes';
+import { deserializeQuicVarInt, readUntilEof } from './bytes';
 import { STREAM } from 'src/constants';
 
 /**

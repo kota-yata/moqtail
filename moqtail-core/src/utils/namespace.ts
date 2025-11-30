@@ -1,4 +1,4 @@
-import { varBytesToString, deserializeQuicVarInt, stringToVarBytes } from 'bytes';
+import { varBytesToString, deserializeQuicVarInt, stringToVarBytes } from './bytes';
 
 /**
  * Deserialize a hierarchical namespace represented as var-bytes strings.

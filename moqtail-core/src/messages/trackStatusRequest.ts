@@ -1,7 +1,7 @@
-import { serializeQuicVarInt, stringToVarBytes, concatUint8Arrays, deserializeQuicVarInt, varBytesToString } from 'bytes';
+import { serializeQuicVarInt, stringToVarBytes, concatUint8Arrays, deserializeQuicVarInt, varBytesToString } from '../utils/bytes';
 import { CONTROL_MESSAGE } from '../constants';
 import { deserializeNamespace, validateFullTrackName } from '../utils/namespace';
-import { getUint16, setUint16 } from 'bytes';
+import { getUint16, setUint16 } from '../utils/bytes';
 import { serializeParams, deserializeParams, type Parameter } from '../utils/parameter';
 
 export const serializeTrackStatusRequest = (props: { requestId: number, trackNamespace: string[], trackName: string, parameters?: Parameter[] }) => {

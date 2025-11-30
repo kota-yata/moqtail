@@ -1,5 +1,5 @@
 import type { ExtensionHeader } from "../../dataStreams/extensionHeader";
-import { concatUint8Arrays, deserializeQuicVarInt, serializeQuicVarInt } from "bytes";
+import { concatUint8Arrays, deserializeQuicVarInt, serializeQuicVarInt } from "../../utils/bytes";
 import { MI_EXTENSION_HEADER_TYPE } from "./miExtensionHeaders";
 
 export type OpusBitstream = {

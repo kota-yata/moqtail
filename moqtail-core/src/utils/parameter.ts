@@ -1,5 +1,5 @@
 import { CONTROL_MESSAGE, PARAMETER } from "../constants";
-import { concatUint8Arrays, serializeQuicVarInt, deserializeQuicVarInt } from 'bytes';
+import { concatUint8Arrays, serializeQuicVarInt, deserializeQuicVarInt } from './bytes';
 import { serializeKeyValuePair, deserializeKeyValuePair, type KeyValuePair } from './keyValuePair';
 import { serializeAuthToken } from "./authToken";
 

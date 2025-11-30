@@ -1,4 +1,4 @@
-import { concatUint8Arrays, serializeQuicVarInt, stringToVarBytes } from "bytes";
+import { concatUint8Arrays, serializeQuicVarInt, stringToVarBytes } from "./bytes";
 import { ObjectValueList } from "internal";
 
 /** Serialize an authorization token in the MOQT parameter format. */

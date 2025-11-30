@@ -1,4 +1,4 @@
-import { concatUint8Arrays, serializeQuicVarInt, stringToVarBytes } from 'bytes';
+import { concatUint8Arrays, serializeQuicVarInt, stringToVarBytes } from '../utils/bytes';
 import {
   deserializeVideoDecoderConfig,
   videoDecoderConfigToExtensionHeader,

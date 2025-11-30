@@ -1,8 +1,8 @@
 import { CONTROL_MESSAGE, GROUP_ORDER, SUBSCRIBE_FILTER, SUBSCRIBE_FORWARD } from "../constants";
 import { deserializeParams, type Parameter, serializeParams } from "../utils/parameter";
-import { concatUint8Arrays, serializeQuicVarInt, stringToVarBytes, deserializeQuicVarInt, varBytesToString, setUint8, getUint8 } from "bytes";
+import { concatUint8Arrays, serializeQuicVarInt, stringToVarBytes, deserializeQuicVarInt, varBytesToString, setUint8, getUint8 } from "../utils/bytes";
 import { deserializeNamespace, validateFullTrackName } from "../utils/namespace";
-import { getUint16, setUint16 } from "bytes";
+import { getUint16, setUint16 } from "../utils/bytes";
 
 export const serializeSubscribe = (props: Subscribe) => {
   // Validate track name length

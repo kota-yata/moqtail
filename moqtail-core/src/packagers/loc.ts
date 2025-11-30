@@ -1,6 +1,6 @@
 // serializer/deserializer for Low Overhead Container (https://datatracker.ietf.org/doc/draft-mzanaty-moq-loc/)
 import type { ExtensionHeader } from "../dataStreams/extensionHeader";
-import { buffRead, buffReadFromArray, concatUint8Arrays, serializeQuicVarInt, stringToVarBytes, varBytesToString, deserializeQuicVarInt, varBytesToStringFromArray, deserializeQuicVarIntFromArray } from "bytes"
+import { buffRead, buffReadFromArray, concatUint8Arrays, serializeQuicVarInt, stringToVarBytes, varBytesToString, deserializeQuicVarInt, varBytesToStringFromArray, deserializeQuicVarIntFromArray } from "../utils/bytes"
 
 /** Serialize an EncodedVideoChunk or EncodedAudioChunk to LOC bytes. */
 export const serializeEncodedChunk = (obj: EncodedVideoChunk | EncodedAudioChunk): Uint8Array => {

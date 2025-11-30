@@ -1,6 +1,6 @@
-import { serializeQuicVarInt, concatUint8Arrays, deserializeQuicVarInt } from 'bytes';
+import { serializeQuicVarInt, concatUint8Arrays, deserializeQuicVarInt } from '../utils/bytes';
 import { CONTROL_MESSAGE, ANNOUNCE_ERROR_REASON } from '../constants';
-import { getUint16, setUint16 } from 'bytes';
+import { getUint16, setUint16 } from '../utils/bytes';
 import { serializeReasonPhrase, deserializeReasonPhrase } from '../utils/reasonPhrase';
 
 export const serializeAnnounceError = (props: { requestId: number, errorCode: ANNOUNCE_ERROR_REASON, reasonPhrase: string }) => {

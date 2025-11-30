@@ -1,6 +1,6 @@
 {
   "name": "moqtail",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Media over QUIC Transport Browser Implementation",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -29,9 +29,6 @@
     "url": "https://github.com/kota-yata/moqtail/issues"
   },
   "homepage": "https://github.com/kota-yata/moqtail#readme",
-  "dependencies": {
-    "bytes": "*"
-  },
   "devDependencies": {
     "@types/dom-mediacapture-transform": "^0.1.11",
     "@types/jest": "^29.5.14",

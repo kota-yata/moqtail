@@ -1,7 +1,7 @@
 // WARP (WARP Streaming Format) implementation
 // Based on draft-ietf-moq-warp-00
 
-import { varBytesToString } from "bytes";
+import { varBytesToString } from "../utils/bytes";
 
 // WARP version 1 as specified in the draft
 /** Current WARP catalog version supported. */

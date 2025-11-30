@@ -1,8 +1,8 @@
-import { serializeQuicVarInt, concatUint8Arrays, deserializeQuicVarInt, stringToVarBytes, varBytesToString, setUint8, getUint8 } from 'bytes';
+import { serializeQuicVarInt, concatUint8Arrays, deserializeQuicVarInt, stringToVarBytes, varBytesToString, setUint8, getUint8 } from '../utils/bytes';
 import { CONTROL_MESSAGE, FETCH_TYPE } from '../constants';
 import { deserializeParams, type Parameter, serializeParams } from '../utils/parameter';
 import { deserializeNamespace, validateFullTrackName } from '../utils/namespace';
-import { getUint16, setUint16 } from 'bytes';
+import { getUint16, setUint16 } from '../utils/bytes';
 
 export const serializeFetch = (props: { requestId: number, subscriberPriority: number, groupOrder: number, fetchType: FETCH_TYPE, trackNamespace?: string[], trackName?: string, startGroup?: number, startObject?: number, endGroup?: number, endObject?: number, joiningRequestId?: number, precedingGroupOffset?: number, parameters?: Parameter[] }) => {
   const messageTypeBytes = serializeQuicVarInt(CONTROL_MESSAGE.FETCH);

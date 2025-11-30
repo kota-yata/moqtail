@@ -1,4 +1,4 @@
-import { serializeQuicVarInt, deserializeQuicVarInt, concatUint8Arrays } from 'bytes';
+import { serializeQuicVarInt, deserializeQuicVarInt, concatUint8Arrays } from './bytes';
 
 /** Wrapper for a human-readable error or status reason. */
 export interface ReasonPhrase {

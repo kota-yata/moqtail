@@ -8,7 +8,11 @@ const rawConfig = ts.readConfigFile(
 ).config;
 const tsconfig = {
   ...rawConfig.compilerOptions,
-  paths: { ...(rawConfig.compilerOptions?.paths || {}), bytes: ['../bytes/src/index.ts'] }
+  paths: {
+    ...(rawConfig.compilerOptions?.paths || {}),
+    // Ensure absolute-style imports like 'src/...' resolve in tests
+    'src/*': ['src/*']
+  }
 };
 
 export default {
@@ -17,8 +21,6 @@ export default {
     '^.+\\.tsx?$': ['ts-jest', { useESM: true, tsconfig }],
   },
   extensionsToTreatAsEsm: ['.ts'],
-  moduleNameMapper: {
-    '^bytes$': '<rootDir>/../bytes/src/index.ts'
-  },
+  moduleNameMapper: {},
   testPathIgnorePatterns: ['/node_modules/', '/dist/']
 };

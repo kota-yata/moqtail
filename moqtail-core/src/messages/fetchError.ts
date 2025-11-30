@@ -1,6 +1,6 @@
-import { serializeQuicVarInt, concatUint8Arrays, deserializeQuicVarInt } from 'bytes';
+import { serializeQuicVarInt, concatUint8Arrays, deserializeQuicVarInt } from '../utils/bytes';
 import { CONTROL_MESSAGE, FETCH_ERROR_REASON } from '../constants';
-import { getUint16, setUint16 } from 'bytes';
+import { getUint16, setUint16 } from '../utils/bytes';
 import { deserializeReasonPhrase, serializeReasonPhrase } from '../utils/reasonPhrase';
 
 export const serializeFetchError = (props: { requestId: number, errorCode: FETCH_ERROR_REASON, reasonPhrase: string }) => {

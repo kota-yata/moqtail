@@ -1,7 +1,7 @@
-import { serializeQuicVarInt, stringToVarBytes, concatUint8Arrays, deserializeQuicVarInt, varBytesToString } from 'bytes';
+import { serializeQuicVarInt, stringToVarBytes, concatUint8Arrays, deserializeQuicVarInt, varBytesToString } from '../utils/bytes';
 import { CONTROL_MESSAGE, TRACK_STATUS_CODE } from '../constants';
 import { deserializeNamespace, validateFullTrackName } from '../utils/namespace';
-import { getUint16, setUint16 } from 'bytes';
+import { getUint16, setUint16 } from '../utils/bytes';
 import { serializeParams, deserializeParams, type Parameter } from '../utils/parameter';
 import { serializeLocation, deserializeLocation, type Location } from '../utils/location';
 

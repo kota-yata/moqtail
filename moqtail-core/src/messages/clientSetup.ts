@@ -1,7 +1,7 @@
 import { CONTROL_MESSAGE } from "../constants";
 import { deserializeParams, serializeParams, type Parameter } from "../utils/parameter";
-import { concatUint8Arrays, serializeQuicVarInt, deserializeQuicVarInt } from "bytes";
-import { getUint16, setUint16 } from "bytes";
+import { concatUint8Arrays, serializeQuicVarInt, deserializeQuicVarInt } from "../utils/bytes";
+import { getUint16, setUint16 } from "../utils/bytes";
 
 /** Serialize a CLIENT_SETUP control message. */
 export const serializeClientSetup = (props: { supportedVersions: number[], params?: Parameter[] }) => {

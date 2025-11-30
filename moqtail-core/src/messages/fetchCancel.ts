@@ -1,6 +1,6 @@
-import { serializeQuicVarInt, concatUint8Arrays, deserializeQuicVarInt } from 'bytes';
+import { serializeQuicVarInt, concatUint8Arrays, deserializeQuicVarInt } from '../utils/bytes';
 import { CONTROL_MESSAGE } from '../constants';
-import { getUint16, setUint16 } from 'bytes';
+import { getUint16, setUint16 } from '../utils/bytes';
 
 export const serializeFetchCancel = (requestId: number) => {
   const messageTypeBytes = serializeQuicVarInt(CONTROL_MESSAGE.FETCH_CANCEL);
