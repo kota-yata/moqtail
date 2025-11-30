@@ -15,33 +15,17 @@ export { createTypedWorker } from '../utils/typedWorker';
 export { getTransportWorkerURL } from './worker-url';
 
 /**
- * Merge user-provided options with transport defaults.
- */
-function defaults(opts?: Partial<TransportOptions>): TransportOptions {
-  return {
-    role: 'subscriber',
-    enableDatagrams: false,
-    autoStartControlRead: true,
-    autoStartStreamRead: true,
-    autoStartDatagramRead: false,
-    congestionControl: 'throughput',
-    ...(opts || {}),
-  };
-}
-
-/**
  * Create a typed transport facade bound to a dedicated Worker.
  * The returned API delegates to the worker via `postMessage`.
  */
-export function createTransport(worker: Worker, base?: Partial<TransportOptions>): MoqTransport {
-  const baseOptions = defaults(base);
+export function createTransport(worker: Worker, base?: TransportOptions): MoqTransport {
 
   const post = (msg: TransportMessageFromMainThread, transfer?: Transferable[]) => worker.postMessage(msg, transfer);
 
   const api: MoqTransport = {
     /** @inheritdoc MoqTransport.connect */
     async connect(url, opts) {
-      const options = { ...baseOptions, ...(opts || {}) };
+      const options = { ...base, ...(opts || {}) };
       post({ type: 'startConnection', data: { url, options } });
     },
     /** @inheritdoc MoqTransport.close */
@@ -57,8 +41,8 @@ export function createTransport(worker: Worker, base?: Partial<TransportOptions>
       post({ type: 'startControlReadLoop', data: null });
     },
     /** @inheritdoc MoqTransport.startStreamReadLoop */
-    startStreamReadLoop() {
-      post({ type: 'startStreamReadLoop', data: null });
+    startStreamReadLoop(input) {
+      post({ type: 'startStreamReadLoop', data: input });
     },
     /** @inheritdoc MoqTransport.createSubgroupStream */
     async createSubgroupStream(input) {

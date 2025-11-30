@@ -20,6 +20,13 @@ import type { TransportError } from './error';
 export type TransportRole = 'subscriber' | 'publisher' | 'both';
 
 /**
+ * Modes for receiving subgroup objects.
+ * - `normal`: receive raw subgroup objects for custom processing
+ * - `encodedChunk`: receive WebCodecs Encoded{Video,Audio}ChunkInit objects
+ */
+export type RX_OBJECT_MODE = 'normal' | 'encodedChunk';
+
+/**
  * Transport configuration options.
  */
 export type TransportOptions = {
@@ -29,10 +36,6 @@ export type TransportOptions = {
   enableDatagrams?: boolean;
   /** Start the control stream read loop automatically. Default: `true`. */
   autoStartControlRead?: boolean;
-  /** Start the incoming unidirectional stream read loop automatically. Default: `true`. */
-  autoStartStreamRead?: boolean;
-  /** Start the datagram read loop automatically. Default: `false`. */
-  autoStartDatagramRead?: boolean;
   /** WebTransport congestion control mode. Default: `throughput`. */
   congestionControl?: 'throughput' | 'low-latency';
 };
@@ -101,8 +104,8 @@ export interface SubgroupHeaderEvent {
   data: SubgroupHeader;
 }
 
-export interface SubgroupObjectEvent {
-  type: 'subgroup:object';
+export interface SubgroupMediaObjectEvent {
+  type: 'subgroup:media-object';
   data: {
     header: SubgroupObject;
     encodedChunkInit: EncodedVideoChunkInit | EncodedAudioChunkInit;
@@ -110,6 +113,11 @@ export interface SubgroupObjectEvent {
     subgroupId: number;
     groupId: number;
   };
+}
+
+export interface SubgroupObjectEvent {
+  type: 'subgroup:object';
+  data: { header: SubgroupObject; payload: Uint8Array; trackAlias: number; subgroupId: number; groupId: number };
 }
 
 export interface SubgroupObjectStatusEvent {
@@ -132,6 +140,7 @@ export type TransportEvent =
   | SessionConnectedEvent
   | SessionClosedEvent
   | SubgroupHeaderEvent
+  | SubgroupMediaObjectEvent
   | SubgroupObjectEvent
   | SubgroupObjectStatusEvent
   | DatagramMaxSizeEvent
@@ -148,7 +157,7 @@ export type TransportMessageFromMainThread =
   | { type: 'sendSubgroupObject'; data: { subgroupObject: Uint8Array; subgroupId: number; isLast?: boolean } }
   | { type: 'sendDatagram'; data: Uint8Array }
   | { type: 'startControlReadLoop'; data: null }
-  | { type: 'startStreamReadLoop'; data: null }
+  | { type: 'startStreamReadLoop'; data: { mode?: RX_OBJECT_MODE } }
   | { type: 'startDatagramReadLoop'; data: null }
   | { type: 'closeSession'; data: null };
 
@@ -168,7 +177,7 @@ export interface MoqTransport {
   /** Manually start the control read loop if auto-start was disabled. */
   startControlReadLoop(): void;
   /** Manually start reading incoming unidirectional subgroup streams. */
-  startStreamReadLoop(): void;
+  startStreamReadLoop(input: { mode?: RX_OBJECT_MODE }): void;
   /**
    * Create a unidirectional stream for a subgroup and write its header.
    * Required before sending subgroup objects.

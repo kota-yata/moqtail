@@ -50,7 +50,7 @@ export class Publisher {
   private cleanedUp: boolean = false;
   constructor(props: PublisherInitProps) {
     const worker = new Worker(getTransportWorkerURL(), { type: 'module' });
-    this.transport = createTransport(worker, { role: 'publisher', enableDatagrams: true });
+    this.transport = createTransport(worker, { role: 'publisher', autoStartControlRead: true, enableDatagrams: true });
     const on = (t: TransportEvent['type']) => this.transport.on(t as any, this.transportEventHandler.bind(this) as any);
     this.unsubEvents.push(
       on('datagram:max-size'),

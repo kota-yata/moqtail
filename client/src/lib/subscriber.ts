@@ -36,14 +36,15 @@ export class Subscriber {
   private cleanedUp: boolean = false;
   constructor(props: SubscriberInitProps) {
     const worker = new Worker(getTransportWorkerURL(), { type: 'module' });
-    this.transport = createTransport(worker, { role: 'subscriber', enableDatagrams: true });
-    const on = (t: TransportEvent['type']) => this.transport.on(t as any, this.transportEventHandler.bind(this) as any);
+    this.transport = createTransport(worker, { role: 'subscriber', autoStartControlRead: true, enableDatagrams: true });
+    const on = (t: TransportEvent['type']) => this.transport.on(t, this.transportEventHandler.bind(this));
     this.unsubEvents.push(
       on('ctrl:server-setup'),
       on('ctrl:subscribe-ok'),
       on('ctrl:subscribe-error'),
       on('ctrl:subscribe-done'),
       on('subgroup:header'),
+      on('subgroup:media-object'),
       on('subgroup:object'),
       on('subgroup:object-status'),
       on('datagram:object'),
@@ -154,7 +155,7 @@ export class Subscriber {
       }
       this.selectedVersion = msg.selectedVersion;
       this.logger.info(`Setup successful with version ${msg.selectedVersion}`);
-      this.transport.startStreamReadLoop();
+      this.transport.startStreamReadLoop({ mode: 'encodedChunk' });
       this.transport.startDatagramReadLoop();
       break;
     }
@@ -167,7 +168,7 @@ export class Subscriber {
         break;
       }
       subscription.subscribeOk = true;
-      this.transport.startStreamReadLoop();
+      this.transport.startStreamReadLoop({ mode: 'encodedChunk' });
       this.transport.startDatagramReadLoop();
       break;
     }
@@ -210,7 +211,7 @@ export class Subscriber {
         }
       }
       break;
-    case 'subgroup:object':
+    case 'subgroup:media-object':
       const encodedChunkInit = message.data.encodedChunkInit;
       const subgroupId = message.data.subgroupId;
       const groupId = this.subgroupToGroup.get(subgroupId);
@@ -239,6 +240,9 @@ export class Subscriber {
       const chunk = new EncodedVideoChunk(encodedChunkInit);
       this.receivedBytes += encodedChunkInit.data.byteLength;
       subVideo.decoder.postMessage({ type: 'decode', data: { encodedVideoChunk: chunk, config: videoDecoderConfig } });
+      break;
+    case 'subgroup:object':
+      this.logger.warn('Received subgroup:object, which is not supported in Subscriber');
       break;
     case 'subgroup:object-status':
       // This indicates the end of the unistream

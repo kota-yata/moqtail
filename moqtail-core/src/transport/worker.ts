@@ -15,7 +15,8 @@ import { deserializeSubgroupObjectHeader } from '../dataStreams/subgroupObject';
 import { deserializeEncodedChunk } from '../packagers/loc';
 import { deserializeDatagramType, deserializeDatagramHeader, DATAGRAM_TYPE } from '../dataStreams/datagram';
 import { readStream } from '../utils/stream';
-import type { TransportMessageFromMainThread } from './types';
+import type { RX_OBJECT_MODE, TransportMessageFromMainThread } from './types';
+import { buffRead } from 'bytes';
 
 const STATE = {
   STOPPED: 0b0,
@@ -33,7 +34,7 @@ class SharedTransportWorker {
   private datagramReader: ReadableStreamDefaultReader;
   private streams: Map<number, WritableStreamDefaultWriter> = new Map();
   private state = 0;
-  private options: any = {};
+  private objectMode: RX_OBJECT_MODE = 'normal';
 
   onMessage(message: MessageEvent<TransportMessageFromMainThread>) {
     const m = message.data;
@@ -89,16 +90,14 @@ class SharedTransportWorker {
       this.controlStream = await this.wt.createBidirectionalStream({ sendOrder: 100 });
       this.controlWriter = this.controlStream.writable;
       this.controlReader = this.controlStream.readable;
-      if (this.options?.enableDatagrams) {
+      if (options?.enableDatagrams) {
         this.datagramWriter = this.wt.datagrams.writable.getWriter();
         this.datagramReader = this.wt.datagrams.readable.getReader();
         postMessage({ type: 'datagram:max-size', data: this.wt.datagrams.maxDatagramSize });
       }
       this.state = this.state | STATE.RUNNING;
       postMessage({ type: 'session:connected' });
-      if (this.options?.autoStartControlRead !== false) this.startControlReadLoop();
-      if (this.options?.autoStartStreamRead !== false) this.startStreamReadLoop();
-      if (this.options?.autoStartDatagramRead) this.startDatagramReadLoop();
+      if (options?.autoStartControlRead) this.startControlReadLoop();
     } catch (e) {
       postMessage({ type: 'error', data: { name: 'WTConnectionFailedError', message: String(e), shouldCleanup: true } });
     }
@@ -209,9 +208,14 @@ class SharedTransportWorker {
     }
   }
 
-  async startStreamReadLoop() {
+  /**
+   * Start the stream read loop.
+   * @param mode Mode for receiving objects ('normal' or 'encodedChunk')
+   */
+  async startStreamReadLoop(input: { mode?: RX_OBJECT_MODE } = {}) {
     if (this.state & STATE.READING_STREAM) return;
     this.state = this.state | STATE.READING_STREAM;
+    this.objectMode = input.mode ?? 'normal';
     while (this.state & STATE.READING_STREAM) {
       const reader = this.wt.incomingUnidirectionalStreams.getReader();
       const { value: readableStream, done } = await reader.read();
@@ -236,8 +240,19 @@ class SharedTransportWorker {
         const header = await deserializeSubgroupObjectHeader(reader);
         const hasStatus = header.objectStatus !== undefined;
         if (!hasStatus) {
-          const encodedChunkInit = await deserializeEncodedChunk(reader);
-          postMessage({ type: 'subgroup:object', data: { header, encodedChunkInit, trackAlias, subgroupId, groupId } });
+          //TODO: Support both modes in a more elegant way.
+          // Currently, the worker switches between two modes based on the first call to `startStreamReadLoop`.
+          // This flow prevents mixing both modes simultaneously, meaning having different subgroup streams in different modes.
+          if (this.objectMode === 'encodedChunk') {
+            const encodedChunkInit = await deserializeEncodedChunk(reader);
+            postMessage({ type: 'subgroup:media-object', data: { header, encodedChunkInit, trackAlias, subgroupId, groupId } });
+          } else {
+            if (!header.payloadLength) {
+              postMessage({ type: 'error', data: { name: 'StreamReadFailedError', message: 'payloadLength is missing when reading a normal subgroup object', shouldCleanup: false } });
+            }
+            const payload = await buffRead(reader, header.payloadLength);
+            postMessage({ type: 'subgroup:object', data: { header, payload, trackAlias, subgroupId, groupId } }, [payload.buffer]);
+          }
         } else {
           postMessage({ type: 'subgroup:object-status', data: { header, subgroupId } });
           done = true;
