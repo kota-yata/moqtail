@@ -73,7 +73,7 @@ class SharedTransportWorker {
   async startConnection(url: string, options?: any) {
     try {
       this.options = options || {};
-      this.wt = new (self as any).WebTransport(url, { congestionControl: this.options?.congestionControl || 'throughput' });
+      this.wt = new WebTransport(url, { congestionControl: this.options?.congestionControl || 'throughput' });
       await this.wt.ready;
       this.controlStream = await this.wt.createBidirectionalStream({ sendOrder: 100 });
       this.controlWriter = this.controlStream.writable;
@@ -153,42 +153,42 @@ class SharedTransportWorker {
       switch (msgType) {
         case CONTROL_MESSAGE.SERVER_SETUP: {
           const m = await deserializeServerSetup(this.controlReader);
-          postMessage({ type: 'ctrl:server-setup', data: m } as any);
+          postMessage({ type: 'ctrl:server-setup', data: m });
           break;
         }
         case CONTROL_MESSAGE.ANNOUNCE_OK: {
           const m = await deserializeAnnounceOk(this.controlReader);
-          postMessage({ type: 'ctrl:announce-ok', data: m } as any);
+          postMessage({ type: 'ctrl:announce-ok', data: m });
           break;
         }
         case CONTROL_MESSAGE.ANNOUNCE_ERROR: {
           const m = await deserializeAnnounceError(this.controlReader);
-          postMessage({ type: 'ctrl:announce-error', data: m } as any);
+          postMessage({ type: 'ctrl:announce-error', data: m });
           break;
         }
         case CONTROL_MESSAGE.SUBSCRIBE: {
           const m = await deserializeSubscribe(this.controlReader);
-          postMessage({ type: 'ctrl:subscribe', data: m } as any);
+          postMessage({ type: 'ctrl:subscribe', data: m });
           break;
         }
         case CONTROL_MESSAGE.SUBSCRIBE_OK: {
           const m = await deserializeSubscribeOk(this.controlReader);
-          postMessage({ type: 'ctrl:subscribe-ok', data: m } as any);
+          postMessage({ type: 'ctrl:subscribe-ok', data: m });
           break;
         }
         case CONTROL_MESSAGE.SUBSCRIBE_ERROR: {
           const m = await deserializeSubscribeError(this.controlReader);
-          postMessage({ type: 'ctrl:subscribe-error', data: m } as any);
+          postMessage({ type: 'ctrl:subscribe-error', data: m });
           break;
         }
         case CONTROL_MESSAGE.SUBSCRIBE_DONE: {
           const m = await deserializeSubscribeDone(this.controlReader);
-          postMessage({ type: 'ctrl:subscribe-done', data: m } as any);
+          postMessage({ type: 'ctrl:subscribe-done', data: m });
           break;
         }
         case CONTROL_MESSAGE.UNSUBSCRIBE: {
           const m = await deserializeUnsubscribe(this.controlReader);
-          postMessage({ type: 'ctrl:unsubscribe', data: m } as any);
+          postMessage({ type: 'ctrl:unsubscribe', data: m });
           break;
         }
         default:
@@ -210,7 +210,7 @@ class SharedTransportWorker {
           break;
         default:
           const subgroupHeader = await deserializeSubgroupHeader(headerType, readableStream);
-          postMessage({ type: 'subgroup:header', data: subgroupHeader } as any);
+          postMessage({ type: 'subgroup:header', data: subgroupHeader });
           this.readSubgroupObject(readableStream, subgroupHeader.trackAlias, subgroupHeader.subgroupId!, subgroupHeader.groupId);
       }
       reader.releaseLock();
@@ -222,16 +222,16 @@ class SharedTransportWorker {
       let done = false;
       while (!done) {
         const header = await deserializeSubgroupObjectHeader(reader);
-        const hasStatus = (header as any).objectStatus !== undefined;
+        const hasStatus = header.objectStatus !== undefined;
         if (!hasStatus) {
           const encodedChunkInit = await deserializeEncodedChunk(reader);
-          postMessage({ type: 'subgroup:object', data: { header, encodedChunkInit, trackAlias, subgroupId, groupId } } as any);
+          postMessage({ type: 'subgroup:object', data: { header, encodedChunkInit, trackAlias, subgroupId, groupId } });
         } else {
-          postMessage({ type: 'subgroup:object-status', data: { header, subgroupId } } as any);
+          postMessage({ type: 'subgroup:object-status', data: { header, subgroupId } });
           done = true;
         }
       }
-      await (reader as any).cancel?.();
+      await reader.cancel();
     } catch (e) {
       postMessage({ type: 'error', data: { name: 'StreamReadFailedError', message: String(e), shouldCleanup: false } });
     }
@@ -254,7 +254,7 @@ class SharedTransportWorker {
         if (datagramType === DATAGRAM_TYPE.DATAGRAM_WITH_EXTENSION || datagramType === DATAGRAM_TYPE.DATAGRAM_WITHOUT_EXTENSION) {
           const header = await deserializeDatagramHeader(datagramType, readableStream);
           const payload = await readStream(readableStream, 1024 * 1024);
-          postMessage({ type: 'datagram:object', data: { header, payload } } as any, [payload.buffer]);
+          postMessage({ type: 'datagram:object', data: { header, payload } }, [payload.buffer]);
         } else {
           // Status datagrams are ignored for now.
         }
@@ -269,5 +269,5 @@ self.addEventListener('message', workerInstance.onMessage.bind(workerInstance));
 export {};
 
 const postMessage: (message: any, transfer?: Transferable[]) => void = (message: any, transfer?: Transferable[]) => {
-  (self as any).postMessage(message, transfer as any);
+  self.postMessage(message, void 0, transfer);
 };
