@@ -10,9 +10,9 @@ const allowPaths = [
 
 export default defineConfig({
   plugins: [sveltekit()],
-  server: {
-    fs: {
-      allow: allowPaths,
-    },
-  },
+  // server: {
+  //   fs: {
+  //     allow: allowPaths,
+  //   },
+  // },
 });
