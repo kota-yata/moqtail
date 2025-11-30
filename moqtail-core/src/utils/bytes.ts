@@ -9,7 +9,7 @@ export const buffReadFrombyobReader = async (
   offset: number,
   size: number
 ): Promise<ArrayBuffer> => {
-  const ret = null as any;
+  const ret = null;
   if (size <= 0) {
     return ret;
   }
@@ -217,7 +217,7 @@ export const buffRead = async (
   readableStream: ReadableStream,
   size: number
 ): Promise<Uint8Array> => {
-  const ret = null as any;
+  const ret = null;
   if (size <= 0) {
     return ret;
   }
@@ -235,7 +235,7 @@ export const buffRead = async (
 
 export const buffReadFromArray = (data: Uint8Array, size: number, offset: number): Uint8Array => {
   if (size <= 0) {
-    return null as any;
+    return null;
   }
   if (offset + size > data.length) {
     throw new Error('short buffer');
