@@ -36,6 +36,10 @@ class SharedTransportWorker {
   private state = 0;
   private objectMode: RX_OBJECT_MODE = 'normal';
 
+  /**
+   * Handle incoming messages from the main thread. **This is not supposed to be called externally**
+   * @param message 
+   */
   onMessage(message: MessageEvent<TransportMessageFromMainThread>) {
     const m = message.data;
     switch (m.type) {
@@ -58,7 +62,7 @@ class SharedTransportWorker {
         this.startControlReadLoop();
         break;
       case 'startStreamReadLoop':
-        this.startStreamReadLoop();
+        this.startStreamReadLoop(m.data);
         break;
       case 'startDatagramReadLoop':
         this.startDatagramReadLoop();
@@ -103,6 +107,11 @@ class SharedTransportWorker {
     }
   }
 
+  /**
+   * Send a serialized control message to the server.
+   * @param data Serialized control message
+   * @returns 
+   */
   async sendControlMessage(data: Uint8Array) {
     if (this.state === STATE.STOPPED) {
       postMessage({ type: 'error', data: { name: 'SessionClosedError', message: 'session is closed', shouldCleanup: true } });
@@ -117,6 +126,9 @@ class SharedTransportWorker {
     }
   }
 
+  /**
+   * Explicitly close the WebTransport session.
+   */
   closeSession() {
     this.state = STATE.STOPPED;
     // Ignore errors during close since we're shutting down anyway.
@@ -124,6 +136,10 @@ class SharedTransportWorker {
     postMessage({ type: 'session:closed' });
   }
 
+  /**
+   * Open a unidirectional stream for the given subgroup and write its header.
+   * @param param0 SubgroupId and serialized subgroup header
+   */
   async createSubgroupStream({ subgroupId, subgroupHeader }: { subgroupId: number; subgroupHeader: Uint8Array }) {
     try {
       this.streams.set(subgroupId, (await this.wt.createUnidirectionalStream()).getWriter());
@@ -134,6 +150,10 @@ class SharedTransportWorker {
     }
   }
 
+  /**
+   * Send a serialized subgroup object over the corresponding subgroup stream.
+   * @param param0 SubgroupId, serialized subgroup object, and optional flag indicating if this is the last object
+   */
   async sendSubgroupObject({ subgroupId, subgroupObject, isLast }: { subgroupObject: Uint8Array; subgroupId: number; isLast?: boolean }) {
     while (!this.streams.has(subgroupId)) {
       await new Promise((r) => setTimeout(r, 0));
@@ -150,6 +170,10 @@ class SharedTransportWorker {
     }
   }
 
+  /**
+   * Send a serialized datagram to the server.
+   * @param payload Serialized datagram payload
+   */
   async sendDatagram(payload: Uint8Array) {
     try {
       await this.datagramWriter.write(payload);
@@ -158,6 +182,9 @@ class SharedTransportWorker {
     }
   }
 
+  /**
+   * Start the control message read loop.
+   */
   async startControlReadLoop() {
     while (this.state & STATE.RUNNING) {
       const msgType = await readControlMessageType(this.controlReader);
@@ -264,6 +291,9 @@ class SharedTransportWorker {
     }
   }
 
+  /**
+   * Start the datagram read loop. 
+   */
   async startDatagramReadLoop() {
     if (this.state & STATE.READING_DATAGRAM) return;
     this.state = this.state | STATE.READING_DATAGRAM;
