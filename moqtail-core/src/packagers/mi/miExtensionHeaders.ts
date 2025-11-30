@@ -1,6 +1,6 @@
 import { serializeQuicVarInt } from "bytes";
 import type { ExtensionHeader } from "../../dataStreams/extensionHeader";
-import { audioDecoderConfigToExtensionHeader, LOC_EXTENSION_HEADER_TYPE, videoDecoderConfigToExtensionHeader } from "../loc";
+import { audioDecoderConfigToExtensionHeader, videoDecoderConfigToExtensionHeader } from "../loc";
 import { H264AVCCExtraDataToExtensionHeader, H264AVCCMetadataToExtensionHeader } from "./h264AVCC";
 import { opusBitstreamToExtensionHeader } from "./opus";
 import { AACLCBitstreamToExtensionHeader } from "./AACLC";

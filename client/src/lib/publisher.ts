@@ -1,7 +1,7 @@
 // main thread for publisher
 // interaction with the component page: video/audio start, stop, pause, resume,
 import {
-  CONTROL_MESSAGE, MOQT_DRAFT11_VERSION, PARAMETER,
+  MOQT_DRAFT11_VERSION, PARAMETER,
   serializeAnnounce, serializeClientSetup, serializeSubgroupHeader, serializeSubscribeError, serializeSubscribeOk,
   serializeUnannounce, SUBSCRIBE_ERROR_REASON, SUBSCRIBE_FILTER, serializeSubgroupObject, serializeEncodedChunk,
   videoDecoderConfigToExtensionHeader, OBJECT_STATUS, serializeDatagram, audioDecoderConfigToExtensionHeader,
