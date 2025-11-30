@@ -15,7 +15,7 @@ export const serializeDatagram = (props: Datagram) => {
   const groupIdBytes = serializeQuicVarInt(props.groupId);
   const objectIdBytes = serializeQuicVarInt(props.objectId);
   const publisherPriorityBytes = setUint8(props.publisherPriority);
-  let extensionHeaderBytes = new Uint8Array(0);
+  let extensionHeaderBytes: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
   if (props.type === DATAGRAM_TYPE.DATAGRAM_WITH_EXTENSION) {
     extensionHeaderBytes = serializeExtensionHeaders(props.extensionHeaders);
   }

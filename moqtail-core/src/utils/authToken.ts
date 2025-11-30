@@ -4,8 +4,8 @@ import { ObjectValueList } from "internal";
 /** Serialize an authorization token in the MOQT parameter format. */
 export const serializeAuthToken = (token: TOKEN): Uint8Array => {
   const aliasBytes = serializeQuicVarInt(token.aliasType);
-  let tokenAliasBytes = new Uint8Array(0);
-  let tokenTypeBytes = new Uint8Array(0);
+  let tokenAliasBytes: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
+  let tokenTypeBytes: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
   let tokenValueBytes = new Uint8Array(0);
   switch (token.aliasType) {
     case AUTH_TOKEN_ALIAS_TYPE.DELETE:
