@@ -49,8 +49,10 @@ export class Publisher {
   private requestIdToNamespace: Map<number, string[]> = new Map();
   private cleanedUp: boolean = false;
   constructor(props: PublisherInitProps) {
+    this.logger.debug('Initializing Publisher with server URL:', props.serverUrl);
     const worker = new Worker(getTransportWorkerURL(), { type: 'module' });
     this.transport = createTransport(worker, { role: 'publisher', autoStartControlRead: true, enableDatagrams: true });
+    this.logger.debug('Transport created and configured');
     const on = (t: TransportEvent['type']) => this.transport.on(t as any, this.transportEventHandler.bind(this) as any);
     this.unsubEvents.push(
       on('datagram:max-size'),
