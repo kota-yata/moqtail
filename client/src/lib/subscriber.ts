@@ -2,9 +2,22 @@ import { Logger } from 'tslog';
 import { WarpCatalogManager } from './warpCatalogManager';
 import { deserializeVideoDecoderConfig, LOC_EXTENSION_HEADER_TYPE, MOQT_DRAFT11_VERSION, serializeClientSetup,
   serializeSubscribe, deserializeAudioDecoderConfig, serializeUnsubscribe, deserializeEncodedChunkFromArray, PARAMETER,
-  createTransport, getTransportWorkerURL, type MoqTransport, type TransportEvent, type Subscribe,
-  WARP_CATALOG_TRACK_NAME
+  createTransport, getTransportWorkerURL, WARP_CATALOG_TRACK_NAME,
 } from 'moqtail';
+import type {
+  MoqTransport,
+  Subscribe,
+  CtrlServerSetup,
+  CtrlSubscribeOk,
+  CtrlSubscribeError,
+  CtrlSubscribeDone,
+  SubgroupHeaderEvent,
+  SubgroupMediaObjectEvent,
+  SubgroupObjectEvent,
+  DatagramObjectEvent,
+  ErrorEvent,
+  SubgroupObjectStatusEvent
+} from 'moqtail'
 import { moqVideoTransmissionLatencyStore, ringStats, bitrateStore } from './utils/store';
 
 import TypedVideoDecoderWorker from './threads/video/decoder.worker.typed';
@@ -37,18 +50,17 @@ export class Subscriber {
   constructor(props: SubscriberInitProps) {
     const worker = new Worker(getTransportWorkerURL(), { type: 'module' });
     this.transport = createTransport(worker, { role: 'subscriber', autoStartControlRead: true, enableDatagrams: true });
-    const on = (t: TransportEvent['type']) => this.transport.on(t, this.transportEventHandler.bind(this));
     this.unsubEvents.push(
-      on('ctrl:server-setup'),
-      on('ctrl:subscribe-ok'),
-      on('ctrl:subscribe-error'),
-      on('ctrl:subscribe-done'),
-      on('subgroup:header'),
-      on('subgroup:media-object'),
-      on('subgroup:object'),
-      on('subgroup:object-status'),
-      on('datagram:object'),
-      on('error'),
+      this.transport.on('ctrl:server-setup', this.onCtrlServerSetup.bind(this)),
+      this.transport.on('ctrl:subscribe-ok', this.onCtrlSubscribeOk.bind(this)),
+      this.transport.on('ctrl:subscribe-error', this.onCtrlSubscribeError.bind(this)),
+      this.transport.on('ctrl:subscribe-done', this.onCtrlSubscribeDone.bind(this)),
+      this.transport.on('subgroup:header', this.onSubgroupHeader.bind(this)),
+      this.transport.on('subgroup:media-object', this.onSubgroupMediaObject.bind(this)),
+      this.transport.on('subgroup:object', this.onSubgroupObject.bind(this)),
+      this.transport.on('subgroup:object-status', this.onSubgroupObjectStatus.bind(this)),
+      this.transport.on('datagram:object', this.onDatagramObject.bind(this)),
+      this.transport.on('error', this.onTransportError.bind(this)),
     );
     this.transport.connect(props.serverUrl);
     this.bitrateInterval = setInterval(() => {
@@ -144,150 +156,140 @@ export class Subscriber {
       }
     });
   }
-  transportEventHandler(message: TransportEvent) {
-    switch (message.type) {
-    case 'ctrl:server-setup': {
-      const msg = message.data;
-      if (!this.supportedVersions.includes(msg.selectedVersion)) {
-        this.logger.error('Server does not support any of the versions we support');
-        this.transport.close();
-        break;
-      }
-      this.selectedVersion = msg.selectedVersion;
-      this.logger.info(`Setup successful with version ${msg.selectedVersion}`);
-      // Start reading streams here because objects may arrive before subscribeOk
-      this.transport.startStreamReadLoop({ mode: 'encodedChunk' });
-      this.transport.startDatagramReadLoop();
-      break;
-    }
-    case 'ctrl:subscribe-ok': {
-      const msg = message.data;
-      this.logger.info(`Subscribe successful for ${msg.requestId}`);
-      const subscription = this.subscription.find(sub => sub.subscribe.requestId === msg.requestId);
-      if (!subscription) {
-        this.logger.error(`Unknown subscribeOk with requestId:${msg.requestId} received`);
-        break;
-      }
-      subscription.subscribeOk = true;
-      break;
-    }
-    case 'ctrl:subscribe-error': {
-      const msg = message.data;
-      this.logger.error(`Subscribe error for alias ${msg.trackAlias}: ${msg.reasonPhrase}`);
-      const subscriptionError = this.subscription.find(sub => sub.subscribe.trackAlias === msg.trackAlias);
-      if (!subscriptionError) {
-        this.logger.error(`Unknown subscribeError with trackAlias:${msg.trackAlias} received`);
-        this.transport.close();
-        break;
-      }
-      this.subscription = this.subscription.filter(sub => sub.subscribe.trackAlias !== msg.trackAlias);
-      subscriptionError.decoder.terminate();
-      // this.communicator.postMessage({ type: 'closeStream', data: { trackAlias: msg.trackAlias } });
-      break;
-    }
-    case 'ctrl:subscribe-done': {
-      const msg = message.data;
-      this.logger.info(`Subscribe done for requestId ${msg.requestId} with status ${msg.statusCode}`);
-      const subscriptionDone = this.subscription.find(sub => sub.subscribe.requestId === msg.requestId);
-      if (!subscriptionDone) {
-        this.logger.error(`Unknown subscribeDone with requestId:${msg.requestId} received`); 
-        this.transport.close();
-        break;
-      }
-      this.subscription = this.subscription.filter(sub => sub.subscribe.requestId !== msg.requestId);
-      subscriptionDone.decoder.terminate();
-      // this.communicator.postMessage({ type: 'closeStream', data: { trackAlias: subscriptionDone.subscribe.trackAlias } });
-      break;
-    }
-    case 'subgroup:header':
-      const subgroupHeader = message.data;
-      const subHeader = this.getSubscriptionByTrackAlias(subgroupHeader.trackAlias);
-      this.logger.info(`Subgroup stream with trackAlias:${subgroupHeader.trackAlias} received`);
-      if (subHeader.type === 'video') {
-        this.subgroupToGroup.set(subgroupHeader.subgroupId, subgroupHeader.groupId);
-        if (this.currentVideoGroupId === null || this.currentVideoGroupId !== subgroupHeader.groupId) {
-          this.videoWaitingForKeyFrame = true;
-        }
-      }
-      break;
-    case 'subgroup:media-object':
-      const encodedChunkInit = message.data.encodedChunkInit;
-      const subgroupId = message.data.subgroupId;
-      const groupId = this.subgroupToGroup.get(subgroupId);
-      if (this.videoWaitingForKeyFrame && encodedChunkInit.type !== 'key') {
-        this.logger.debug('Waiting for video key frame...');
-        break;
-      }
-      this.videoWaitingForKeyFrame = false;
-      this.currentVideoGroupId = groupId ?? null;
-      if (this.videoTimestampOffset === null) {
-        this.videoTimestampOffset = performance.now() - (encodedChunkInit.timestamp ?? 0) / 1000;
-      }
-      const videoTrackAlias = message.data.trackAlias;
-      const subVideo = this.subscription.find(s => s.subscribe.trackAlias === videoTrackAlias);
-      const header = message.data.header;
-      let videoDecoderConfig = null;
-      header.extensionHeaders.map(h => {
-        if (h.type === LOC_EXTENSION_HEADER_TYPE.VIDEO_CONFIG) {
-          videoDecoderConfig = deserializeVideoDecoderConfig(h.value as Uint8Array);
-        } else if (h.type === LOC_EXTENSION_HEADER_TYPE.CAPTURE_TIMESTAMP) {
-          const sender = h.value as number;
-          const now = Math.round(performance.timeOrigin) + (performance.now() | 0);
-          moqVideoTransmissionLatencyStore.set(now - sender);
-        }
-      });
-      const chunk = new EncodedVideoChunk(encodedChunkInit);
-      this.receivedBytes += encodedChunkInit.data.byteLength;
-      subVideo.decoder.postMessage({ type: 'decode', data: { encodedVideoChunk: chunk, config: videoDecoderConfig } });
-      break;
-    case 'subgroup:object':
-      this.logger.warn('Received subgroup:object, which is not supported in Subscriber');
-      break;
-    case 'subgroup:object-status':
-      // This indicates the end of the unistream
-      break;
-    case 'datagram:object':
-      const datagramObject = message.data;
-      const subDatagram = this.getSubscriptionByTrackAlias(datagramObject.header.trackAlias);
-      // Check if this is a catalog track
-      if (subDatagram.subscribe.trackName === WARP_CATALOG_TRACK_NAME) {
-        // Handle WARP catalog update
-        this.handleCatalogUpdate(datagramObject.payload);
-        break;
-      }
-      const chunkInit = deserializeEncodedChunkFromArray(datagramObject.payload);
-      if (subDatagram.type === 'audio') {
-        if (this.audioWaitingForKeyFrame && chunkInit.type !== 'key') {
-          this.logger.debug('Waiting for audio key frame...');
-          break;
-        }
-        this.audioWaitingForKeyFrame = false;
 
-        let audioDecoderConfig = null;
-        datagramObject.header.extensionHeaders.map(h => {
-          if (h.type !== LOC_EXTENSION_HEADER_TYPE.AUDIO_CONFIG) return;
-          const readableStream = this.generateReadableStreamFromBuffer(h.value as Uint8Array<ArrayBuffer>);
-          deserializeAudioDecoderConfig(readableStream).then((config) => {
-            audioDecoderConfig = config;
-          });
-        });
-        
-        const audioChunk = new EncodedAudioChunk(chunkInit as EncodedAudioChunkInit);
-        this.receivedBytes += (chunkInit as EncodedAudioChunkInit).data.byteLength;
-        subDatagram.decoder.postMessage({ type: 'decode', data: { encodedAudioChunk: audioChunk, config: audioDecoderConfig } });
-      } else {
-        // only audio is supported for datagram now
-        this.logger.warn(`Datagram received for unsupported track type: ${subDatagram.type}`);
-      }
-      break;
-    case 'error':
-      {
-        const err = message.data;
-        this.logger.error(`Subscriber communicator error [${err.name}]: ${err.message}`);
-        if (err.shouldCleanup) this.cleanupOnError();
-      }
-      break;
+  // ------- Individual Transport Event Handlers -------
+  private onCtrlServerSetup(message: CtrlServerSetup) {
+    const msg = message.data;
+    if (!this.supportedVersions.includes(msg.selectedVersion)) {
+      this.logger.error('Server does not support any of the versions we support');
+      this.transport.close();
+      return;
     }
+    this.selectedVersion = msg.selectedVersion;
+    this.logger.info(`Setup successful with version ${msg.selectedVersion}`);
+    // Start reading streams here because objects may arrive before subscribeOk
+    this.transport.startStreamReadLoop({ mode: 'encodedChunk' });
+    this.transport.startDatagramReadLoop();
+  }
+  private onCtrlSubscribeOk(message: CtrlSubscribeOk) {
+    const msg = message.data;
+    this.logger.info(`Subscribe successful for ${msg.requestId}`);
+    const subscription = this.subscription.find(sub => sub.subscribe.requestId === msg.requestId);
+    if (!subscription) {
+      this.logger.error(`Unknown subscribeOk with requestId:${msg.requestId} received`);
+      return;
+    }
+    subscription.subscribeOk = true;
+  }
+  private onCtrlSubscribeError(message: CtrlSubscribeError) {
+    const msg = message.data;
+    this.logger.error(`Subscribe error for alias ${msg.trackAlias}: ${msg.reasonPhrase}`);
+    const subscriptionError = this.subscription.find(sub => sub.subscribe.trackAlias === msg.trackAlias);
+    if (!subscriptionError) {
+      this.logger.error(`Unknown subscribeError with trackAlias:${msg.trackAlias} received`);
+      this.transport.close();
+      return;
+    }
+    this.subscription = this.subscription.filter(sub => sub.subscribe.trackAlias !== msg.trackAlias);
+    subscriptionError.decoder.terminate();
+  }
+  private onCtrlSubscribeDone(message: CtrlSubscribeDone) {
+    const msg = message.data;
+    this.logger.info(`Subscribe done for requestId ${msg.requestId} with status ${msg.statusCode}`);
+    const subscriptionDone = this.subscription.find(sub => sub.subscribe.requestId === msg.requestId);
+    if (!subscriptionDone) {
+      this.logger.error(`Unknown subscribeDone with requestId:${msg.requestId} received`);
+      this.transport.close();
+      return;
+    }
+    this.subscription = this.subscription.filter(sub => sub.subscribe.requestId !== msg.requestId);
+    subscriptionDone.decoder.terminate();
+  }
+  private onSubgroupHeader(message: SubgroupHeaderEvent) {
+    const subgroupHeader = message.data;
+    const subHeader = this.getSubscriptionByTrackAlias(subgroupHeader.trackAlias);
+    this.logger.info(`Subgroup stream with trackAlias:${subgroupHeader.trackAlias} received`);
+    if (subHeader.type === 'video') {
+      this.subgroupToGroup.set(subgroupHeader.subgroupId, subgroupHeader.groupId);
+      if (this.currentVideoGroupId === null || this.currentVideoGroupId !== subgroupHeader.groupId) {
+        this.videoWaitingForKeyFrame = true;
+      }
+    }
+  }
+  private onSubgroupMediaObject(message: SubgroupMediaObjectEvent) {
+    const encodedChunkInit = message.data.encodedChunkInit;
+    const subgroupId = message.data.subgroupId;
+    const groupId = this.subgroupToGroup.get(subgroupId);
+    if (this.videoWaitingForKeyFrame && encodedChunkInit.type !== 'key') {
+      this.logger.debug('Waiting for video key frame...');
+      return;
+    }
+    this.videoWaitingForKeyFrame = false;
+    this.currentVideoGroupId = groupId ?? null;
+    if (this.videoTimestampOffset === null) {
+      this.videoTimestampOffset = performance.now() - (encodedChunkInit.timestamp ?? 0) / 1000;
+    }
+    const videoTrackAlias = message.data.trackAlias;
+    const subVideo = this.subscription.find(s => s.subscribe.trackAlias === videoTrackAlias);
+    const header = message.data.header;
+    let videoDecoderConfig = null;
+    header.extensionHeaders.map(h => {
+      if (h.type === LOC_EXTENSION_HEADER_TYPE.VIDEO_CONFIG) {
+        videoDecoderConfig = deserializeVideoDecoderConfig(h.value as Uint8Array);
+      } else if (h.type === LOC_EXTENSION_HEADER_TYPE.CAPTURE_TIMESTAMP) {
+        const sender = h.value as number;
+        const now = Math.round(performance.timeOrigin) + (performance.now() | 0);
+        moqVideoTransmissionLatencyStore.set(now - sender);
+      }
+    });
+    const chunk = new EncodedVideoChunk(encodedChunkInit);
+    this.receivedBytes += encodedChunkInit.data.byteLength;
+    subVideo.decoder.postMessage({ type: 'decode', data: { encodedVideoChunk: chunk, config: videoDecoderConfig } });
+  }
+  private onSubgroupObject(_message: SubgroupObjectEvent) {
+    this.logger.warn('Received subgroup:object, which is not supported in Subscriber');
+  }
+  private onSubgroupObjectStatus(_message: SubgroupObjectStatusEvent) {
+    // This indicates the end of the unistream
+  }
+  private onDatagramObject(message: DatagramObjectEvent) {
+    const datagramObject = message.data;
+    const subDatagram = this.getSubscriptionByTrackAlias(datagramObject.header.trackAlias);
+    // Check if this is a catalog track
+    if (subDatagram.subscribe.trackName === WARP_CATALOG_TRACK_NAME) {
+      // Handle WARP catalog update
+      this.handleCatalogUpdate(datagramObject.payload);
+      return;
+    }
+    const chunkInit = deserializeEncodedChunkFromArray(datagramObject.payload);
+    if (subDatagram.type === 'audio') {
+      if (this.audioWaitingForKeyFrame && chunkInit.type !== 'key') {
+        this.logger.debug('Waiting for audio key frame...');
+        return;
+      }
+      this.audioWaitingForKeyFrame = false;
+
+      let audioDecoderConfig = null;
+      datagramObject.header.extensionHeaders.map(h => {
+        if (h.type !== LOC_EXTENSION_HEADER_TYPE.AUDIO_CONFIG) return;
+        const readableStream = this.generateReadableStreamFromBuffer(h.value as Uint8Array<ArrayBuffer>);
+        deserializeAudioDecoderConfig(readableStream).then((config) => {
+          audioDecoderConfig = config;
+        });
+      });
+      
+      const audioChunk = new EncodedAudioChunk(chunkInit as EncodedAudioChunkInit);
+      this.receivedBytes += (chunkInit as EncodedAudioChunkInit).data.byteLength;
+      subDatagram.decoder.postMessage({ type: 'decode', data: { encodedAudioChunk: audioChunk, config: audioDecoderConfig } });
+    } else {
+      // only audio is supported for datagram now
+      this.logger.warn(`Datagram received for unsupported track type: ${subDatagram.type}`);
+    }
+  }
+  private onTransportError(message: ErrorEvent) {
+    const err = message.data;
+    this.logger.error(`Subscriber communicator error [${err.name}]: ${err.message}`);
+    if (err.shouldCleanup) this.cleanupOnError();
   }
   decoderMessageHandler(message: MessageEvent<VideoDecoderMessageFromWorker | AudioDecoderMessageFromWorker>) {
     switch (message.data.type) {
