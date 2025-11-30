@@ -16,7 +16,7 @@ import { deserializeEncodedChunk } from '../packagers/loc';
 import { deserializeDatagramType, deserializeDatagramHeader, DATAGRAM_TYPE } from '../dataStreams/datagram';
 import { readStream } from '../utils/stream';
 import type { RX_OBJECT_MODE, TransportMessageFromMainThread } from './types';
-import { buffRead } from 'bytes';
+import { buffRead } from '../utils/bytes';
 
 const STATE = {
   STOPPED: 0b0,

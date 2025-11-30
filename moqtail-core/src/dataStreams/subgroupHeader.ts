@@ -1,4 +1,4 @@
-import { concatUint8Arrays, getUint8, serializeQuicVarInt, setUint8, deserializeQuicVarInt } from "bytes";
+import { concatUint8Arrays, getUint8, serializeQuicVarInt, setUint8, deserializeQuicVarInt } from "../utils/bytes";
 import { STREAM } from "../constants";
 
 /** Serialize a subgroup header to bytes. */

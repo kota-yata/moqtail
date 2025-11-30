@@ -2,9 +2,13 @@ const MAX_U6 = Math.pow(2, 6) - 1;
 const MAX_U14 = Math.pow(2, 14) - 1;
 const MAX_U30 = Math.pow(2, 30) - 1;
 const MAX_U53 = Number.MAX_SAFE_INTEGER;
-// const MAX_U62 = 2n ** 62n - 1n
 
-export const buffReadFrombyobReader = async (reader: ReadableStreamBYOBReader, buffer: ArrayBuffer, offset: number, size: number): Promise<ArrayBuffer> => {
+export const buffReadFrombyobReader = async (
+  reader: ReadableStreamBYOBReader,
+  buffer: ArrayBuffer,
+  offset: number,
+  size: number
+): Promise<ArrayBuffer> => {
   const ret = null;
   if (size <= 0) {
     return ret;
@@ -36,7 +40,7 @@ export const getQuicVarIntLength = (v: number | bigint) => {
   } else {
     throw new Error(`overflow, value larger than 53-bits: ${v}`);
   }
-}
+};
 
 export const serializeQuicVarInt = (value: number | bigint) => {
   if (typeof value === 'number') value = BigInt(value);
@@ -96,7 +100,7 @@ export const deserializeQuicVarInt = async (readableStream: ReadableStream): Pro
   } finally {
     reader.releaseLock();
   }
-  return ret;
+  return ret!;
 };
 
 export const deserializeQuicVarIntFromArray = (
@@ -159,7 +163,7 @@ export const getUint8 = async (readableStream: ReadableStream): Promise<number> 
 
 export const getUint16 = async (readableStream: ReadableStream): Promise<number> => {
   const buf = await buffRead(readableStream, 2);
-  return new DataView(buf.buffer).getUint16(0, false); // big-endian
+  return new DataView(buf.buffer).getUint16(0, false);
 };
 
 export const setUint8 = (v: number) => {
@@ -189,17 +193,16 @@ const setUint64 = (v: bigint) => {
   return ret;
 };
 
-
 export const concatUint8Arrays = (arr: Uint8Array[]) => {
   let totalLength = 0;
-  arr.forEach(element => {
+  arr.forEach((element) => {
     if (element !== undefined) {
       totalLength += element.byteLength;
     }
   });
   const retBuffer = new Uint8Array(totalLength);
   let pos = 0;
-  arr.forEach(element => {
+  arr.forEach((element) => {
     if (element !== undefined) {
       retBuffer.set(element, pos);
       pos += element.byteLength;
@@ -210,7 +213,10 @@ export const concatUint8Arrays = (arr: Uint8Array[]) => {
 
 export const concatBuffer = concatUint8Arrays;
 
-export const buffRead = async (readableStream: ReadableStream, size: number): Promise<Uint8Array> => {
+export const buffRead = async (
+  readableStream: ReadableStream,
+  size: number
+): Promise<Uint8Array> => {
   const ret = null;
   if (size <= 0) {
     return ret;
@@ -219,7 +225,7 @@ export const buffRead = async (readableStream: ReadableStream, size: number): Pr
   const reader = readableStream.getReader({ mode: 'byob' });
 
   try {
-    const ab = await buffReadFrombyobReader(reader, buff, 0, size);
+    const ab = await buffReadFrombyobReader(reader, buff.buffer, 0, size);
     buff = new Uint8Array(ab);
   } finally {
     reader.releaseLock();
@@ -235,19 +241,20 @@ export const buffReadFromArray = (data: Uint8Array, size: number, offset: number
     throw new Error('short buffer');
   }
   return data.slice(offset, offset + size);
-}
+};
 
-export const readUntilEof = async (readableStream, blockSize) => {
-  const chunkArray = [];
+export const readUntilEof = async (readableStream: ReadableStream, blockSize: number) => {
+  const chunkArray: ArrayBuffer[] = [];
   let totalLength = 0;
 
   while (true) {
-    let bufferChunk = new Uint8Array(blockSize);
+    let bufferChunk: ArrayBuffer = new Uint8Array(blockSize).buffer;
     const reader = readableStream.getReader({ mode: 'byob' });
     const { value, done } = await reader.read(new Uint8Array(bufferChunk, 0, blockSize));
     if (value !== undefined) {
+      // value is a Uint8Array view; capture its underlying ArrayBuffer
       bufferChunk = value.buffer;
-      chunkArray.push(bufferChunk.slice(0, value.byteLength));
+      chunkArray.push((bufferChunk).slice(0, value.byteLength));
       totalLength += value.byteLength;
     }
     reader.releaseLock();
@@ -258,7 +265,6 @@ export const readUntilEof = async (readableStream, blockSize) => {
       break;
     }
   }
-  // Concatenate received data
   const payload = new Uint8Array(totalLength);
   let pos = 0;
   for (const element of chunkArray) {
@@ -280,7 +286,7 @@ export const varBytesToString = async (receiveStream: ReadableStream) => {
   const size = await deserializeQuicVarInt(receiveStream);
   const buffer = await buffRead(receiveStream, size);
   return new TextDecoder().decode(buffer);
-}
+};
 
 export const varBytesToStringFromArray = (data: Uint8Array, offset: number = 0) => {
   const result = deserializeQuicVarIntFromArray(data, offset);
@@ -288,4 +294,5 @@ export const varBytesToStringFromArray = (data: Uint8Array, offset: number = 0) 
   const buffer = data.slice(start, start + result.value);
   const text = new TextDecoder().decode(buffer);
   return { byteLength: result.byteLength + result.value, value: text };
-}
+};
+

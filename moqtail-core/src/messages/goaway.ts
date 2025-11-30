@@ -1,7 +1,7 @@
 import { CONTROL_MESSAGE } from "../constants";
-import { concatUint8Arrays, serializeQuicVarInt, varBytesToString, stringToVarBytes, deserializeQuicVarInt } from "bytes";
+import { concatUint8Arrays, serializeQuicVarInt, varBytesToString, stringToVarBytes, deserializeQuicVarInt } from "../utils/bytes";
 
-import { getUint16, setUint16 } from "bytes";
+import { getUint16, setUint16 } from "../utils/bytes";
 export const serializeGoaway = (props: { newSessionUri: string }) => {
   const messageType = serializeQuicVarInt(CONTROL_MESSAGE.GOAWAY);
   const newSessionUriBytes = stringToVarBytes(props.newSessionUri);

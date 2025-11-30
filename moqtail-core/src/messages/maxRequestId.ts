@@ -1,6 +1,6 @@
 import { CONTROL_MESSAGE } from "../constants";
-import { concatUint8Arrays, serializeQuicVarInt, deserializeQuicVarInt } from "bytes";
-import { getUint16, setUint16 } from "bytes";
+import { concatUint8Arrays, serializeQuicVarInt, deserializeQuicVarInt } from "../utils/bytes";
+import { getUint16, setUint16 } from "../utils/bytes";
 
 export const serializeMaxRequestId = (props: { requestId: number }) => {
   const messageType = serializeQuicVarInt(CONTROL_MESSAGE.MAX_REQUEST_ID);

@@ -1,4 +1,4 @@
-import { serializeQuicVarInt, deserializeQuicVarInt, concatUint8Arrays } from 'bytes';
+import { serializeQuicVarInt, deserializeQuicVarInt, concatUint8Arrays } from './bytes';
 
 /**
  * Logical identifier for a MOQT object within a group.

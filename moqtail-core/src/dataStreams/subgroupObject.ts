@@ -1,5 +1,5 @@
 import type { OBJECT_STATUS } from "../constants";
-import { concatUint8Arrays, serializeQuicVarInt, deserializeQuicVarInt } from "bytes";
+import { concatUint8Arrays, serializeQuicVarInt, deserializeQuicVarInt } from "../utils/bytes";
 import { deserializeExtensionHeader, serializeExtensionHeaders, type ExtensionHeader } from "./extensionHeader";
 
 /** Serialize a subgroup object header and payload. */

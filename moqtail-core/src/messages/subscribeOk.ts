@@ -1,7 +1,7 @@
 import { CONTENT_EXISTS, CONTROL_MESSAGE } from "../constants";
-import { concatUint8Arrays, serializeQuicVarInt, deserializeQuicVarInt, setUint8, getUint8 } from "bytes";
+import { concatUint8Arrays, serializeQuicVarInt, deserializeQuicVarInt, setUint8, getUint8 } from "../utils/bytes";
 import { deserializeParams, type Parameter, serializeParams } from "../utils/parameter";
-import { getUint16, setUint16 } from "bytes";
+import { getUint16, setUint16 } from "../utils/bytes";
 
 export const serializeSubscribeOk = (props: SubscribeOk) => {
   const messageType = serializeQuicVarInt(CONTROL_MESSAGE.SUBSCRIBE_OK);

@@ -1,7 +1,7 @@
-import { serializeQuicVarInt, stringToVarBytes, concatUint8Arrays, deserializeQuicVarInt, varBytesToString } from 'bytes';
+import { serializeQuicVarInt, stringToVarBytes, concatUint8Arrays, deserializeQuicVarInt, varBytesToString } from '../utils/bytes';
 import { CONTROL_MESSAGE } from '../constants';
 import { serializeParams, deserializeParams, type Parameter } from '../utils/parameter';
-import { getUint16, setUint16 } from "bytes";
+import { getUint16, setUint16 } from "../utils/bytes";
 import { deserializeNamespace } from '../utils/namespace';
 
 export const serializeSubscribeAnnounces = (props: { requestId: number, trackNamespacePrefix: string[], parameters?: Parameter[] }) => {

@@ -1,4 +1,4 @@
-import { concatUint8Arrays, serializeQuicVarInt, getQuicVarIntLength } from "bytes";
+import { concatUint8Arrays, serializeQuicVarInt, getQuicVarIntLength } from "../utils/bytes";
 import { KeyValuePair, serializeKeyValuePair, deserializeKeyValuePair } from "../utils/keyValuePair";
 
 /**

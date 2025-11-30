@@ -16,5 +16,4 @@ core-web-test:
 	yarn --cwd moqtail-core web:dev
 
 core-build:
-	yarn --cwd bytes build
 	yarn --cwd moqtail-core build

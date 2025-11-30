@@ -8,9 +8,8 @@
     "baseUrl": ".",
     "paths": {
       "moqtail": ["../dist"],
-      "bytes": ["../../bytes/dist"]
+      
     }
   },
   "include": ["./**/*.ts"]
 }
-

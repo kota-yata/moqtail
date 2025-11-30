@@ -1,7 +1,7 @@
-import { serializeQuicVarInt, concatUint8Arrays, deserializeQuicVarInt, setUint8, getUint8 } from 'bytes';
+import { serializeQuicVarInt, concatUint8Arrays, deserializeQuicVarInt, setUint8, getUint8 } from '../utils/bytes';
 import { CONTROL_MESSAGE } from '../constants';
 import { deserializeParams, type Parameter, serializeParams } from '../utils/parameter';
-import { getUint16, setUint16 } from 'bytes';
+import { getUint16, setUint16 } from '../utils/bytes';
 
 export const serializeFetchOk = (props: { requestId: number, groupOrder: number, endOfTrack: number, largestGroupId: number, largestObjectId: number, parameters?: Parameter[] }) => {
   const messageTypeBytes = serializeQuicVarInt(CONTROL_MESSAGE.FETCH_OK);

@@ -1,4 +1,4 @@
-import { serializeQuicVarInt, deserializeQuicVarInt, concatUint8Arrays, buffRead } from 'bytes';
+import { serializeQuicVarInt, deserializeQuicVarInt, concatUint8Arrays, buffRead } from './bytes';
 
 /**
  * Low-level Key-Value-Pair encoding used by several MOQT structures.

@@ -1,7 +1,7 @@
-import { serializeQuicVarInt, stringToVarBytes, concatUint8Arrays, deserializeQuicVarInt, varBytesToString } from 'bytes';
+import { serializeQuicVarInt, stringToVarBytes, concatUint8Arrays, deserializeQuicVarInt, varBytesToString } from '../utils/bytes';
 import { CONTROL_MESSAGE } from '../constants';
 import { deserializeNamespace } from '../utils/namespace';
-import { getUint16, setUint16 } from 'bytes';
+import { getUint16, setUint16 } from '../utils/bytes';
 
 export const serializeUnannounce = (props: { trackNamespace: string[] }) => {
   const messageTypeBytes = serializeQuicVarInt(CONTROL_MESSAGE.UNANNOUNCE);

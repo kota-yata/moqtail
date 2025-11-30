@@ -1,5 +1,5 @@
 import type { ExtensionHeader } from "../../dataStreams/extensionHeader";
-import { buffRead, concatUint8Arrays, serializeQuicVarInt, deserializeQuicVarInt } from "bytes";
+import { buffRead, concatUint8Arrays, serializeQuicVarInt, deserializeQuicVarInt } from "../../utils/bytes";
 import { MI_EXTENSION_HEADER_TYPE } from "./miExtensionHeaders";
 
 export type H264AVCCMetadata = {

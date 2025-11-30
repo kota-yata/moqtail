@@ -1,7 +1,7 @@
 import { CONTROL_MESSAGE } from "../constants";
 import { deserializeParams, type Parameter, serializeParams } from "../utils/parameter";
-import { concatUint8Arrays, serializeQuicVarInt, deserializeQuicVarInt } from "bytes";
-import { getUint16, setUint16 } from "bytes";
+import { concatUint8Arrays, serializeQuicVarInt, deserializeQuicVarInt } from "../utils/bytes";
+import { getUint16, setUint16 } from "../utils/bytes";
 
 export const serializeServerSetup = (props: ServerSetup) => {
   const messageType = serializeQuicVarInt(CONTROL_MESSAGE.SERVER_SETUP);

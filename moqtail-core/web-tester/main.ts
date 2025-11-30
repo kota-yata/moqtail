@@ -34,7 +34,7 @@ import {
   serializeTrackStatus, deserializeTrackStatus,
 } from '../src/index';
 
-import { getUint16, buffRead } from 'bytes';
+import { getUint16, buffRead } from '../src/utils/bytes';
 
 const $ = (id: string) => document.getElementById(id)!;
 const logEl = $("logs");
@@ -273,4 +273,3 @@ function populateDefaultUrl() {
 
 populateMessageSelect();
 populateDefaultUrl();
-
