@@ -23,7 +23,7 @@
   const videoResolutions = VIDEO_RESOLUTION_OPTIONS;
   let videoResolutionChoice: keyof typeof videoResolutions = 'HD';
 
-  let videoForwardingPreference: 'Subgroup' | 'KeyFrameStream' = 'Subgroup';
+  let videoForwardingPreference: 'Subgroup' = 'Subgroup';
 
   export let moqtServerUrl: string;
   let namespace = ['moqtail'];
@@ -211,8 +211,7 @@
     <div>
       <label for="pub-track-video-forwarding">Video Forwarding</label>
       <select name="pub-track-video-forwarding" bind:value={videoForwardingPreference}>
-        <option value="Subgroup">Stream (Subgroup)</option>
-        <option value="KeyFrameStream">Key Frame Stream</option>
+        <option value="Subgroup">Stream</option>
       </select>
     </div>
     <div>
