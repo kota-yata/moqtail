@@ -1,0 +1,34 @@
+---
+title: Moqtail Docs
+---
+
+# Moqtail Documentation
+
+Welcome to the Moqtail docs. These pages are written in MDX (via mdsvex), so you can mix Markdown with Svelte components.
+
+## Quick Start
+
+Install and import the components you need, then wire them into your Svelte app.
+
+```svelte
+<script lang="ts">
+  import MoQTSubscriber from '$lib/components/MoQTSubscriber.svelte';
+  import MoQTPublisher from '$lib/components/MoQTPublisher.svelte';
+
+  let moqtServerUrl = 'https://example.com/moq';
+</script>
+
+<MoQTPublisher {moqtServerUrl} />
+<MoQTSubscriber {moqtServerUrl} videoWidth={640} videoHeight={360} />
+```
+
+## Links
+
+- Try the live demo at [/demo](/demo)
+- Back to the homepage at [/ ](/)
+
+## Notes
+
+- The default demo relay may be sporadically available.
+- This site is statically prerendered via SvelteKit adapter-static.
+

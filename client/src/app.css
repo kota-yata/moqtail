@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    @apply m-0 p-0 bg-gray-50 text-gray-900 font-sans;
+  }
+  button {
+    @apply m-1 px-4 py-2 bg-gray-300 rounded cursor-pointer hover:bg-gray-400 border-0;
+  }
+  input,
+  select {
+    @apply p-2 border border-gray-300 rounded;
+  }
+  video {
+    @apply bg-gray-800 rounded;
+  }
+}

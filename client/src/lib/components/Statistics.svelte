@@ -20,38 +20,11 @@
   }
 </script>
 
-<div class="statistics">
+<div class="p-4 max-w-md mx-auto">
   <!-- <h3>Statistics</h3> -->
-  <div class="stat-text">
-    <div class="stat-item">
-      <span class="stat-label">Transmission Latency:</span>
-      <span class="stat-value">{$moqVideoTransmissionLatencyStore}ms</span>
-    </div>
-    <div class="stat-item">
-      <span class="stat-label">CPU Load:</span>
-      <span class="stat-value">{cpuLoad}</span>
-    </div>
-    <div class="stat-item">
-      <span class="stat-label">Bitrate:</span>
-      <span class="stat-value">{($bitrateStore / 1_000_000).toFixed(2)} Mbps</span>
-    </div>
+  <div class="text-sm">
+    <div class="mb-2 min-w-[250px]"><span class="font-semibold">Transmission Latency:</span> {$moqVideoTransmissionLatencyStore}ms</div>
+    <div class="mb-2 min-w-[250px]"><span class="font-semibold">CPU Load:</span> {cpuLoad}</div>
+    <div class="mb-2 min-w-[250px]"><span class="font-semibold">Bitrate:</span> {($bitrateStore / 1_000_000).toFixed(2)} Mbps</div>
   </div>
 </div>
-
-<style>
-  .statistics {
-    padding: 1rem;
-    max-width: 500px;
-    margin: 0 auto;
-  }
-
-  .stat-item {
-    margin-bottom: 0.5rem;
-    min-width: 250px;
-  }
-
-  .stat-label {
-    font-weight: bold;
-    min-width: 250px;
-  }
-</style>

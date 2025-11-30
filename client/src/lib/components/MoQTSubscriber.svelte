@@ -103,56 +103,47 @@
   };
 </script>
 
-<div class="sub">
-  <h3>Subscriber</h3>
-  <video width={videoWidth} height={videoHeight} autoplay controls bind:this={videoEl}></video>
-  <div class="track">
-    <div>
-      <label for="pub-track-namespace">Track Namespace</label>
-      <input type="text" name="pub-track-info-namespace" bind:value={namespace} />
+<div class="w-full flex flex-col items-center">
+  <h3 class="text-lg font-semibold">Subscriber</h3>
+  <video class="bg-gray-800 rounded" width={videoWidth} height={videoHeight} autoplay controls bind:this={videoEl}></video>
+  <div class="w-full max-w-md space-y-2 mt-2">
+    <div class="flex items-center gap-2">
+      <label class="min-w-[140px]" for="pub-track-namespace">Track Namespace</label>
+      <input class="flex-1" type="text" name="pub-track-info-namespace" bind:value={namespace} />
     </div>
-    <div>
-      <label for="pub-track-video">Video Track Name</label>
-      <input type="text" name="pub-track-video" bind:value={videoTrackName} />
+    <div class="flex items-center gap-2">
+      <label class="min-w-[140px]" for="pub-track-video">Video Track Name</label>
+      <input class="flex-1" type="text" name="pub-track-video" bind:value={videoTrackName} />
     </div>
-    <div>
-      <label for="pub-track-audio">Audio Track Name</label>
-      <input type="text" name="pub-track-audio" bind:value={audioTrackName} />
+    <div class="flex items-center gap-2">
+      <label class="min-w-[140px]" for="pub-track-audio">Audio Track Name</label>
+      <input class="flex-1" type="text" name="pub-track-audio" bind:value={audioTrackName} />
     </div>
-    <div>
-      <label for="warp-catalog">
+    <div class="flex items-center gap-2">
+      <label class="flex items-center gap-2" for="warp-catalog">
         <input type="checkbox" id="warp-catalog" bind:checked={warpCatalogEnabled} />
         Enable WARP Catalog
       </label>
     </div>
-    <div>
-      <!-- <label for="pub-track-jitter">Jitter Buffer {jitterBufferSize}ms</label> -->
-      <!-- <input
-        type="range"
-        min="0"
-        max="60"
-        step="10"
-        name="pub-track-jitter"
-        bind:value={jitterBufferSize}
-      /> -->
-    </div>
   </div>
-  <button on:click={connectToServer}>Connect to server</button>
-  <button on:click={setup}>Setup</button>
-  <button on:click={playStream}>Start playback</button>
-  <button on:click={stopStream}>Stop playback</button>
+  <div class="mt-2 space-y-2">
+    <button on:click={connectToServer}>Connect to server</button>
+    <button on:click={setup}>Setup</button>
+    <button on:click={playStream}>Start playback</button>
+    <button on:click={stopStream}>Stop playback</button>
+  </div>
   
   {#if warpCatalogEnabled && catalog}
-    <div class="warp-catalog">
-      <h4>WARP Catalog (Version {catalog.version})</h4>
-      <p>Delta Updates: {catalog.supportsDeltaUpdates ? 'Enabled' : 'Disabled'}</p>
-      <p>Available Tracks: {availableTracks.length}</p>
+    <div class="mt-5 p-4 border border-gray-200 rounded bg-gray-50 w-full max-w-2xl">
+      <h4 class="font-semibold">WARP Catalog (Version {catalog.version})</h4>
+      <p class="text-sm text-gray-700">Delta Updates: {catalog.supportsDeltaUpdates ? 'Enabled' : 'Disabled'}</p>
+      <p class="text-sm text-gray-700">Available Tracks: {availableTracks.length}</p>
       
       {#if availableTracks.length > 0}
-        <div class="tracks-list">
-          <h5>Tracks:</h5>
+        <div class="mt-2">
+          <h5 class="font-medium">Tracks:</h5>
           {#each availableTracks as track}
-            <div class="track-item">
+            <div class="py-1 border-b border-gray-200 font-mono text-xs">
               <strong>{track.name}</strong>
               {#if track.codec}({track.codec}){/if}
               {#if track.width && track.height}
@@ -177,39 +168,3 @@
     </div>
   {/if}
 </div>
-
-<style>
-  .warp-catalog {
-    margin-top: 20px;
-    padding: 15px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    background-color: #f9f9f9;
-  }
-  
-  .tracks-list {
-    margin-top: 10px;
-  }
-  
-  .track-item {
-    padding: 5px 0;
-    border-bottom: 1px solid #eee;
-    font-family: monospace;
-    font-size: 12px;
-  }
-  
-  .track-item:last-child {
-    border-bottom: none;
-  }
-
-  .sub {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: start;
-    align-items: center;
-  }
-  video {
-    background-color: #333;
-  }
-</style>

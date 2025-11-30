@@ -1,61 +1,38 @@
-<script lang="ts">
-  import MoQTSubscriber from '$lib/components/MoQTSubscriber.svelte';
-  import MoQtPublisher from '$lib/components/MoQTPublisher.svelte';
-  import GenericInput from '$lib/components/GenericInput.svelte';
-  import Statistics from '$lib/components/Statistics.svelte';
-
-  let moqtServerUrl = 'https://tcam.kota-yata.com:4433/moq';
-  // let moqtServerUrl = 'https://fb.mvfst.net:9448/moq-relay';
-  // let moqtServerUrl = 'https://31.133.145.159:9000'
+<script>
+  const links = [
+    { href: '/demo', label: 'Demo' },
+    { href: '/docs', label: 'Docs' }
+  ];
 </script>
 
 <svelte:head>
-  <title>Video Call over MoQT</title>
+  <title>kota-yata/moqtail</title>
+  <meta name="description" content="Moqtail — a library for MoQT-based media streaming." />
 </svelte:head>
 
-<!-- svelte-ignore a11y-media-has-caption -->
-<div class="container">
-  <h1>Webcam Streaming Demo</h1>
-  <div class="relay-server">
-    <GenericInput key="Relay Server" bind:defaultVal={moqtServerUrl} />
+<section class="text-center py-12">
+  <div class="flex items-center justify-center gap-3">
+    <img src="/sql.webp" alt="Moqtail logo" class="h-10 w-10 rounded" />
+    <h1 class="text-4xl font-semibold tracking-tight">kota-yata/moqtail</h1>
   </div>
-  <p class="p-small">Note that the default server URL does not always work because I turn the process up only when I need to.<br>If it happens to work, you have a nice day.</p>
-  <div class="container-statistics">
-    <Statistics />
-  </div>
-  <div class="container-videos">
-    <div class="left">
-      <MoQtPublisher {moqtServerUrl} />
-    </div>
-    <div class="right">
-      <MoQTSubscriber {moqtServerUrl} videoWidth={480} videoHeight={360} />
-    </div>
-  </div>
-</div>
+  <p class="text-gray-600 mt-2 mb-6">MoQT Publisher/Subscriber library</p>
+  <nav class="flex gap-3 justify-center">
+    {#each links as l}
+      <a class="inline-flex items-center rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-100" href={l.href}
+        >{l.label}</a
+      >
+    {/each}
+  </nav>
+  </section>
 
-<style>
-  .container {
-    width: 100%;
-    margin: 0 auto;
-    padding: 1rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  .container-videos {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    justify-content: center;
-  }
-  .container-videos > div {
-    flex: 1;
-    min-width: 300px;
-    max-width: 500px;
-  }
-
-  .relay-server {
-    margin: 5px;
-    width: 100%;
-  }
-</style>
+<section class="max-w-3xl mx-auto mt-8">
+  <h2 class="text-2xl font-semibold">kota-yata/moqtail</h2>
+  <p class="mt-3">
+    kota-yata/moqtail provides simple publisher/subscriber components and utilities for experimenting with
+    Media over QUIC Transport (MoQT) in the browser.
+  </p>
+  <ul class="list-disc pl-6 mt-3">
+    <li>Try the live <a class="text-blue-600 hover:underline" href="/demo">demo</a>.</li>
+    <li>Read the <a class="text-blue-600 hover:underline" href="/docs">documentation</a> to integrate it.</li>
+  </ul>
+</section>

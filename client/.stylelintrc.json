@@ -7,7 +7,10 @@
     "color-hex-case": ["lower"],
     "comment-no-empty": true,
     "string-quotes": "single",
-    "at-rule-no-unknown": [true, { "ignoreAtRules": ["include", "mixin", "each", "extend"] }],
+    "at-rule-no-unknown": [
+      true,
+      { "ignoreAtRules": ["include", "mixin", "each", "extend", "tailwind", "apply", "layer", "variants"] }
+    ],
     "no-descending-specificity": null,
     "selector-type-no-unknown": null
   },

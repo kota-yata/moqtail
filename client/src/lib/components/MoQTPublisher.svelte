@@ -178,45 +178,46 @@
   });
 </script>
 
-<div class="pub">
-  <h3>Publisher (Webcam capture)</h3>
-  <div class="pub-video">
-    <video autoplay muted playsinline controls bind:this={liveEl}></video>
+<div class="w-full flex flex-col items-center">
+  <h3 class="text-lg font-semibold">Publisher (Webcam capture)</h3>
+  <div class="relative w-full">
+    <video class="object-contain w-full" autoplay muted playsinline controls bind:this={liveEl}></video>
     {#if camera.inputDevices}
-      <select on:change={changeDevice}>
+      <select class="absolute bottom-2 left-2 px-3 py-1 rounded bg-white/80" on:change={changeDevice}>
         {#each camera.inputDevices as device}
           <option value={device.deviceId}>{device.label}</option>
         {/each}
       </select>
     {/if}
   </div>
-  <input class="file-upload" type="file" accept="video/*" on:change={handleVideoUpload} />
-  <div class="track">
-    <div>
-      <label for="pub-track-namespace">Track Namespace</label>
-      <input type="text" name="pub-track-info-namespace" bind:value={namespace} />
+  <input class="my-2" type="file" accept="video/*" on:change={handleVideoUpload} />
+  <div class="w-full max-w-md space-y-2">
+    <div class="flex items-center gap-2">
+      <label class="min-w-[140px]" for="pub-track-namespace">Track Namespace</label>
+      <input class="flex-1" type="text" name="pub-track-info-namespace" bind:value={namespace} />
     </div>
-    <div>
-      <label for="pub-track-video">Video Track Name</label>
-      <input type="text" name="pub-track-video" bind:value={videoTrackName} />
+    <div class="flex items-center gap-2">
+      <label class="min-w-[140px]" for="pub-track-video">Video Track Name</label>
+      <input class="flex-1" type="text" name="pub-track-video" bind:value={videoTrackName} />
     </div>
-    <div>
-      <label for="pub-track-audio">Audio Track Name</label>
-      <input type="text" name="pub-track-audio" bind:value={audioTrackName} />
+    <div class="flex items-center gap-2">
+      <label class="min-w-[140px]" for="pub-track-audio">Audio Track Name</label>
+      <input class="flex-1" type="text" name="pub-track-audio" bind:value={audioTrackName} />
     </div>
-    <div>
-      <label for="pub-track-keyframe-duration">Key Frame Duration {keyFrameDuration}</label>
-      <input type="range" min="1" max="120" name="pub-track-keyframe-duration" bind:value={keyFrameDuration} />
+    <div class="flex items-center gap-2">
+      <label class="min-w-[140px]" for="pub-track-keyframe-duration">Key Frame Duration {keyFrameDuration}</label>
+      <input class="flex-1" type="range" min="1" max="120" name="pub-track-keyframe-duration" bind:value={keyFrameDuration} />
     </div>
-    <div>
-      <label for="pub-track-video-forwarding">Video Forwarding</label>
-      <select name="pub-track-video-forwarding" bind:value={videoForwardingPreference}>
+    <div class="flex items-center gap-2">
+      <label class="min-w-[140px]" for="pub-track-video-forwarding">Video Forwarding</label>
+      <select class="flex-1" name="pub-track-video-forwarding" bind:value={videoForwardingPreference}>
         <option value="Subgroup">Stream</option>
       </select>
     </div>
-    <div>
-      <label for="pub-track-video-resolution">Video Resolution</label>
+    <div class="flex items-center gap-2">
+      <label class="min-w-[140px]" for="pub-track-video-resolution">Video Resolution</label>
       <select
+        class="flex-1"
         name="pub-track-video-resolution"
         bind:value={videoResolutionChoice}
         on:change={async () => await changeResolution()}
@@ -227,42 +228,18 @@
         <option value="4K">4K (3840x2160)</option>
       </select>
     </div>
-    <div>
-      <label for="pub-track-video-encoder-option">Video Encoder</label>
-      <select name="pub-track-video-encoder-option" bind:value={videoEncoderChoice}>
+    <div class="flex items-center gap-2">
+      <label class="min-w-[140px]" for="pub-track-video-encoder-option">Video Encoder</label>
+      <select class="flex-1" name="pub-track-video-encoder-option" bind:value={videoEncoderChoice}>
         <option value="h264">H.264 (moq-mi)</option>
         <option value="vp8">VP8</option>
       </select>
     </div>
   </div>
-  <button on:click={async () => await connectToServer()}>Connect to server</button>
-  <button on:click={async () => setup()}>Setup</button>
-  <button on:click={async () => startStreaming()}>Start streaming</button>
-  <button on:click={async () => stopStreaming()}>Stop streaming</button>
+  <div class="mt-2 space-y-2">
+    <button on:click={async () => await connectToServer()}>Connect to server</button>
+    <button on:click={async () => setup()}>Setup</button>
+    <button on:click={async () => startStreaming()}>Start streaming</button>
+    <button on:click={async () => stopStreaming()}>Stop streaming</button>
+  </div>
 </div>
-
-<style>
-  .pub {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: start;
-    align-items: center;
-  }
-  .pub-video {
-    position: relative;
-  }
-  .pub-video > video {
-    object-fit: contain;
-  }
-  .pub-video > select {
-    position: absolute;
-    bottom: 10px;
-    left: 10px;
-    border: none;
-    padding: 5px 10px;
-  }
-  .file-upload {
-    margin: 10px 0;
-  }
-</style>

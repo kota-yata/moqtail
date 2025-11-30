@@ -3,21 +3,7 @@
   export let defaultVal: string;
 </script>
 
-<div>
-  <label for="val">{key}</label>
-  <input type="text" name="val" bind:value={defaultVal} />
+<div class="w-full flex items-center justify-center">
+  <label class="text-sm text-gray-700" for="val">{key}</label>
+  <input class="ml-2 w-1/2 max-w-[300px]" type="text" name="val" bind:value={defaultVal} />
 </div>
-
-<style>
-  div {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  div > input {
-    margin-left: 5px;
-    width: 50%;
-    max-width: 300px;
-  }
-</style>
