@@ -2,6 +2,7 @@
   "private": true,
   "name": "moqtail-root",
   "workspaces": [
-    "moqtail-core"
+    "moqtail-core",
+    "client"
   ]
 }

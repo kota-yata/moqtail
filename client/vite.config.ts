@@ -12,10 +12,10 @@ export default defineConfig({
   plugins: [sveltekit()],
   optimizeDeps: {
     exclude: ['moqtail'],
-  }
-  // server: {
-  //   fs: {
-  //     allow: allowPaths,
-  //   },
-  // },
+  },
+  server: {
+    fs: {
+      allow: allowPaths,
+    },
+  },
 });
