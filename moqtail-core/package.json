@@ -1,6 +1,6 @@
 {
   "name": "moqtail",
-  "version": "0.1.6",
+  "version": "0.1.8",
   "description": "Media over QUIC Transport Browser Implementation",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "test": "jest",
-    "build": "tsc && vite build --config vite.worker.config.mjs",
+    "build": "tsc",
     "format": "prettier --write .",
     "docs": "typedoc",
     "web:dev": "vite --config web-tester/vite.config.mjs",

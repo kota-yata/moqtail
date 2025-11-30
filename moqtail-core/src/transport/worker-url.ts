@@ -3,5 +3,5 @@
  */
 export function getTransportWorkerURL(): URL {
   // Use the bundled single-file worker for robust loading from external apps
-  return new URL('./worker.bundle.js', import.meta.url);
+  return new URL('./worker.js', import.meta.url);
 }
