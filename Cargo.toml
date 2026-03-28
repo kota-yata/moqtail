@@ -1,0 +1,39 @@
+[workspace]
+resolver = "2"
+members = [
+  "packages/moqtail-core",
+  "packages/moqtail-wasm",
+  "packages/moqtail-loc",
+  "packages/moqtail-warp",
+  "packages/moqtail-browser-client",
+]
+
+[workspace.package]
+authors = ["Kousuke Takaki <kousuke.takaki@shodohq.com>"]
+description = "Live A/V streaming application compatible with Media over QUIC Transport draft-10."
+edition = "2024"
+version = "0.1.0"
+
+[workspace.dependencies]
+async-trait = "0.1"
+bytes = "1.10"
+futures = "0.3"
+js-sys = "0.3"
+log = "0.4"
+thiserror = "2.0"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+wasm-streams = "0.4"
+web-sys = { version = "0.3", features = [
+    "WebTransport",
+    "WebTransportBidirectionalStream",
+    "WebTransportDatagramDuplexStream",
+    "WebTransportReceiveStream",
+    "WebTransportSendStream",
+    "ReadableStream",
+    "WritableStream",
+    "WritableStreamDefaultWriter"
+] }
+console_error_panic_hook = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

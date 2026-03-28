@@ -1,0 +1,11 @@
+[package]
+name = "moqtail-loc"
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
+description = "LOC Streaming Format utilities"
+
+[dependencies]
+bytes = { workspace = true }
+thiserror = { workspace = true }
+moqtail-core = { path = "../moqtail-core" }

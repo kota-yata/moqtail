@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>moqtail-browser-client demo</title>
+</head>
+<body>
+    <h1>moqtail-browser-client demo</h1>
+    <input id="url" type="text" value="https://example.com/moq" size="40" />
+    <button id="connect">Connect</button>
+    <button id="subscribe">Subscribe</button>
+    <pre id="log"></pre>
+
+    <script type="module">
+        import init, { MoqtClient, init_panic_hook } from '../pkg/moqtail_browser_client.js';
+
+        let client = null;
+        const log = (msg) => document.getElementById('log').textContent += msg + '\n';
+
+        async function main() {
+            await init();
+            init_panic_hook();
+            log('WASM loaded');
+            document.getElementById('connect').onclick = async () => {
+                const url = document.getElementById('url').value;
+                try {
+                    client = await MoqtClient.new(url);
+                    log('connected');
+                } catch (e) {
+                    log('connection error: ' + e);
+                }
+            };
+            document.getElementById('subscribe').onclick = async () => {
+                if (!client) return log('connect first');
+                try {
+                    await client.subscribe('moqtail', 'video0');
+                    log('subscribe sent');
+                } catch (e) {
+                    log('subscribe error: ' + e);
+                }
+            };
+        }
+        main();
+    </script>
+</body>
+</html>

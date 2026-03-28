@@ -2,3 +2,10 @@
 .DS_Store
 
 **/dist
+
+
+# Added by cargo
+
+/target
+
+**/pkg
